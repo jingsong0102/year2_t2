@@ -1,0 +1,8 @@
+192.168.3.11
+9000
+test1: short message
+test2: Hello world
+test3: A network socket is an internal endpoint for sending or receiving data within a node on a computer network. Concretely, it is a representation of this endpoint in networking software (protocol stack), such as an entry in a table (listing communication protocol, destination, status, etc.), and is a form of system resource. The term socket is analogous to physical female connectors, communication between two nodes through a channel being visualized as a cable with two male connectors plugging into sockets at each node. Similarly, the term port (another term for a female connector) is used for external endpoints at a node, and the term socket is also used for an internal endpoint of local inter-process communication (IPC) (not over a network). However, the analogy is limited, as network communication need not be one-to-one or have a dedicated communication channel.
+/t 020000000A7465737420343a202f74
+/t 02000000337465737420353a205468697320697320612074657374206361736520666f722043533236302041737369676e6d656e7420312e
+/q
