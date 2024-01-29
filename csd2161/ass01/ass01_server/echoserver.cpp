@@ -176,6 +176,7 @@ int main()
 	sockaddr_in *sockaddr_ipv4{};
 	while (true)
 	{
+		//accept new client
 		if (awaitingClient)
 		{
 			clientSocket = accept(
@@ -217,6 +218,7 @@ int main()
 		{
 			unsigned long hostLength;
 			unsigned char commandId = buffer[0];
+			//quit
 			if (commandId == 0x01)
 			{
 				std::cout << "Quit command received. Bye from " << client_ipStr << ":" << ntohs(sockaddr_ipv4->sin_port) << std::endl;
@@ -224,8 +226,10 @@ int main()
 				awaitingClient = true;
 				continue;
 			}
+			//echo
 			else if (commandId == 0x02)
 			{
+				//get text message length
 				unsigned long netLength;
 				memcpy(&netLength, buffer + 1, 4); // Offset by 1 to skip command ID
 				hostLength = ntohl(netLength);
@@ -236,6 +240,7 @@ int main()
 					awaitingClient = true;
 					continue;
 				}
+				//if message is longer than buffer size
 				if (BUFFER_SIZE < hostLength + 5)
 				{
 					std::string message(buffer + 5, bytesReceived - 5);
@@ -249,6 +254,7 @@ int main()
 					}
 					unsigned long totalBytesReceived = bytesReceived - 5;
 					while (totalBytesReceived < hostLength)
+					//loop until all bytes are received
 					{
 						char remainingBytes[BUFFER_SIZE];
 						const int addbytesReceived = recv(clientSocket, remainingBytes, BUFFER_SIZE, 0);
@@ -278,7 +284,7 @@ int main()
 					}
 					std::cout << std::endl;
 				}
-				else
+				else //if message is shorter than buffer size
 				{
 					std::string message(buffer + 5, bytesReceived - 5);
 					std::cout << "[Echo Msg received] " << message << std::endl;
