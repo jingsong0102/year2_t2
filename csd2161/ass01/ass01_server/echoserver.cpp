@@ -69,7 +69,15 @@ int main()
 	//
 	// getaddrinfo()
 	// -------------------------------------------------------------------------
-
+	// Get local hostname
+	char hostName[256];
+	errorCode = gethostname(hostName, sizeof(hostName));
+	if (errorCode)
+	{
+		std::cerr << "gethostname() failed with error: " << WSAGetLastError() << std::endl;
+		WSACleanup();
+		return errorCode;
+	}
 	// Object hints indicates which protocols to use to fill in the info.
 	addrinfo hints{};
 	SecureZeroMemory(&hints, sizeof(hints));
@@ -82,54 +90,18 @@ int main()
 	hints.ai_flags = AI_PASSIVE;
 
 	addrinfo *info = nullptr;
-	errorCode = getaddrinfo(nullptr, portString.c_str(), &hints, &info);
+	errorCode = getaddrinfo(hostName, portString.c_str(), &hints, &info);
 	if ((errorCode) || (info == nullptr))
 	{
 		std::cerr << "getaddrinfo() failed." << std::endl;
 		WSACleanup();
 		return errorCode;
 	}
-
-	// char hostName[256];
-	// gethostname(hostName, 256);
-	// std::cout << "Server IP Address: " << hostName << std::endl;
-
 	// print server IP address and port number
-	ULONG outBufLen = sizeof(IP_ADAPTER_ADDRESSES);
-	PIP_ADAPTER_ADDRESSES pAddresses = (IP_ADAPTER_ADDRESSES *)malloc(outBufLen);
-	if (GetAdaptersAddresses(AF_INET, 0, NULL, pAddresses, &outBufLen) == ERROR_BUFFER_OVERFLOW)
-	{
-		free(pAddresses);
-		pAddresses = (IP_ADAPTER_ADDRESSES *)malloc(outBufLen);
-	}
-	int c = 0;
-	DWORD dwRetVal = GetAdaptersAddresses(AF_INET, 0, NULL, pAddresses, &outBufLen);
-	if (dwRetVal == NO_ERROR)
-	{
-		for (PIP_ADAPTER_ADDRESSES pCurrAddresses = pAddresses; pCurrAddresses != NULL; pCurrAddresses = pCurrAddresses->Next)
-		{
-
-			for (PIP_ADAPTER_UNICAST_ADDRESS pUnicast = pCurrAddresses->FirstUnicastAddress; pUnicast != NULL; pUnicast = pUnicast->Next)
-			{
-				if (pUnicast->Address.lpSockaddr->sa_family == AF_INET && c == 2)
-				{
-					char ipStr[INET_ADDRSTRLEN];
-					sockaddr_in *sockaddr_ipv4 = reinterpret_cast<sockaddr_in *>(pUnicast->Address.lpSockaddr);
-					inet_ntop(AF_INET, &sockaddr_ipv4->sin_addr, ipStr, sizeof(ipStr));
-					std::cout << "Server IP Address: " << ipStr << std::endl;
-				}
-				c++;
-			}
-		}
-	}
-	else
-	{
-		std::cout << "GetAdaptersAddresses failed with error: " << dwRetVal << std::endl;
-	}
-	if (pAddresses)
-	{
-		free(pAddresses);
-	}
+	sockaddr_in *addr_in = reinterpret_cast<sockaddr_in*>(info->ai_addr);
+    char ipStr[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &(addr_in->sin_addr), ipStr, sizeof(ipStr));
+    std::cout << "Server IP Address: " << ipStr << std::endl;
 	std::cout << "Server Port number: " << port << std::endl;
 
 	// -------------------------------------------------------------------------
@@ -192,7 +164,7 @@ int main()
 	// recv()
 	// send()
 	// -------------------------------------------------------------------------
-	
+
 	SOCKET clientSocket;
 	bool awaitingClient = true;
 	constexpr size_t BUFFER_SIZE = 1000;
@@ -200,7 +172,7 @@ int main()
 	sockaddr clientAddress{};
 	SecureZeroMemory(&clientAddress, sizeof(clientAddress));
 	int clientAddressSize = sizeof(clientAddress);
-	char ipStr[INET_ADDRSTRLEN]{};
+	char client_ipStr[INET_ADDRSTRLEN]{};
 	sockaddr_in *sockaddr_ipv4{};
 	while (true)
 	{
@@ -220,17 +192,17 @@ int main()
 			awaitingClient = false;
 			// print client IP address and port number
 			sockaddr_ipv4 = reinterpret_cast<sockaddr_in *>(&clientAddress);
-			inet_ntop(AF_INET, &sockaddr_ipv4->sin_addr, ipStr, sizeof(ipStr));
+			inet_ntop(AF_INET, &sockaddr_ipv4->sin_addr, client_ipStr, sizeof(client_ipStr));
 			std::cout << std::endl;
-			std::cout << "Client IP Address: " << ipStr << std::endl;
+			std::cout << "Client IP Address: " << client_ipStr << std::endl;
 			std::cout << "Client Port number: " << ntohs(sockaddr_ipv4->sin_port) << std::endl;
 		}
 
-		const int bytesReceived = recv(clientSocket, buffer, BUFFER_SIZE - 1, 0);
+		const int bytesReceived = recv(clientSocket, buffer, BUFFER_SIZE, 0);
 
 		if (bytesReceived == 0)
 		{
-			// std::cout << "client " << ipStr << ":" << ntohs(sockaddr_ipv4->sin_port) << " is closing" << std::endl;
+			std::cout << "client " << client_ipStr << ":" << ntohs(sockaddr_ipv4->sin_port) << " is closing" << std::endl;
 			closesocket(clientSocket);
 			awaitingClient = true;
 			continue;
@@ -244,11 +216,10 @@ int main()
 		else
 		{
 			unsigned long hostLength;
-			buffer[bytesReceived] = '\0';
 			unsigned char commandId = buffer[0];
 			if (commandId == 0x01)
 			{
-				std::cout << "Quit command received. Bye from " << ipStr << ":" << ntohs(sockaddr_ipv4->sin_port) << std::endl;
+				std::cout << "Quit command received. Bye from " << client_ipStr << ":" << ntohs(sockaddr_ipv4->sin_port) << std::endl;
 				closesocket(clientSocket);
 				awaitingClient = true;
 				continue;
@@ -265,40 +236,61 @@ int main()
 					awaitingClient = true;
 					continue;
 				}
-				char *message = new char[hostLength + 1];
-				if (BUFFER_SIZE - 1 < hostLength + 5)
+				if (BUFFER_SIZE < hostLength + 5)
 				{
-					memcpy(message, buffer + 5, bytesReceived);
-					message[bytesReceived - 5] = '\0';
+					std::string message(buffer + 5, bytesReceived - 5);
+					std::cout << "[Echo Msg received] " << message;
+					const int bytesSent = send(clientSocket, buffer, bytesReceived, 0);
+					if (bytesSent == SOCKET_ERROR)
+					{
+						closesocket(clientSocket);
+						awaitingClient = true;
+						continue;
+					}
 					unsigned long totalBytesReceived = bytesReceived - 5;
 					while (totalBytesReceived < hostLength)
 					{
 						char remainingBytes[BUFFER_SIZE];
-						const int addbytesReceived = recv(clientSocket, remainingBytes, BUFFER_SIZE - 1, 0);
-						remainingBytes[addbytesReceived] = '\0';
-						memcpy(message + strlen(message), remainingBytes, addbytesReceived + 1);
+						const int addbytesReceived = recv(clientSocket, remainingBytes, BUFFER_SIZE, 0);
+						if (addbytesReceived == 0)
+						{
+							closesocket(clientSocket);
+							awaitingClient = true;
+							break;
+						}
+						if (addbytesReceived == SOCKET_ERROR)
+						{
+							closesocket(clientSocket);
+							awaitingClient = true;
+							break;
+						}
+						std::string message(remainingBytes, addbytesReceived);
+						std::cout << message;
 						totalBytesReceived += addbytesReceived;
+
+						const int bytesSent = send(clientSocket, remainingBytes, addbytesReceived, 0);
+						if (bytesSent == SOCKET_ERROR)
+						{
+							closesocket(clientSocket);
+							awaitingClient = true;
+							break;
+						}
 					}
-					std::cout << "[Echo Msg received] " << message << " " << hostLength << std::endl;
+					std::cout << std::endl;
 				}
 				else
 				{
-					memcpy(message, buffer + 5, hostLength); // Offset by 5 to skip command ID and message length
-					message[hostLength] = '\0';
-					std::cout << "[Echo Msg received] " << message << " " << hostLength << std::endl;
+					std::string message(buffer + 5, bytesReceived - 5);
+					std::cout << "[Echo Msg received] " << message << std::endl;
+
+					const int bytesSent = send(clientSocket, buffer, bytesReceived, 0);
+					if (bytesSent == SOCKET_ERROR)
+					{
+						closesocket(clientSocket);
+						awaitingClient = true;
+						continue;
+					}
 				}
-				char *sendMessage = new char[hostLength + 6];
-				memcpy(sendMessage, buffer, 5);
-				memcpy(sendMessage + 5, message, hostLength);
-				const int bytesSent = send(clientSocket, sendMessage, hostLength + 5, 0);
-				if (bytesSent == SOCKET_ERROR)
-				{
-					closesocket(clientSocket);
-					awaitingClient = true;
-					continue;
-				}
-				delete[] sendMessage;
-				delete[] message;
 			}
 			else
 			{
