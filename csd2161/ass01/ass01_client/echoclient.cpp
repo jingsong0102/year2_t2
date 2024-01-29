@@ -22,8 +22,6 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 #define WIN32_LEAN_AND_MEAN
 #endif
 
-
-
 #include "Windows.h"  // Entire Win32 API...
 					  // #include "winsock2.h"	// ...or Winsock alone
 #include "ws2tcpip.h" // getaddrinfo()
@@ -38,11 +36,7 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 #include <vector>	// vector
 #include <limits>
 #include <sstream>
-
-#define _CRTDBG_MAP_ALLOC
-#include <stdlib.h>
-#include <crtdbg.h>
-// This function converts a string of hexadecimal digits into a string of
+// This function converts a string of hexadecimal digits into a string
 std::string hexToString(const std::string &hex)
 {
 	std::string str;
@@ -58,13 +52,12 @@ std::string hexToString(const std::string &hex)
 // This program requires one extra command-line parameter: a server hostname.
 int main(int argc)
 {
-	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
-
 	std::string portString;
 	std::string host;
 	std::cout << "Server IP Address: ";
 	std::cin >> host;
-	std::cout << "Server Port: ";
+	std::cout << std::endl;
+	std::cout << "Server Port Number: ";
 	std::cin >> portString;
 	std::cout << std::endl;
 	// -------------------------------------------------------------------------
@@ -134,6 +127,7 @@ int main(int argc)
 		static_cast<int>(info->ai_addrlen));
 	if (errorCode == SOCKET_ERROR)
 	{
+		std::cerr << "Unable to connect to server!" << std::endl;
 		freeaddrinfo(info);
 		closesocket(clientSocket);
 		WSACleanup();
@@ -149,6 +143,7 @@ int main(int argc)
 	constexpr size_t BUFFER_SIZE = 1000;
 	unsigned long commandID{};
 	unsigned long textLength{};
+	// ignore newline char left by key in ip and port
 	std::cin.ignore((std::numeric_limits<std::streamsize>::max)(), '\n');
 	while (true)
 	{
@@ -165,61 +160,152 @@ int main(int argc)
 			closesocket(clientSocket);
 			break;
 		}
-		char *message = new char[input.length() + 5];
+		char message[BUFFER_SIZE];
 		// if quit
 		if (input[0] == '/' && input[1] == 'q')
 		{
 			commandID = 1; // QUIT command
-			textLength = 0;
+			message[0] = static_cast<char>(commandID);
+			int bytesSent = send(
+				clientSocket,
+				message,
+				static_cast<int>(1),
+				0);
+			if (errorCode == SOCKET_ERROR)
+			{
+				closesocket(clientSocket);
+				break;
+			}
+			closesocket(clientSocket);
+			break;
 		}
 		// if test
 		else if (input[0] == '/' && input[1] == 't')
 		{
 			input.erase(0, 3);
-			commandID = std::stoul(input.substr(0, 2));
+			try
+			{
+				commandID = std::stoul(input.substr(0, 2));
+			}
+			catch (const std::out_of_range &e)
+			{
+				commandID = 0;
+				
+			}
+			catch (const std::exception &e)
+			{
+				commandID = 0;
+			}
+
 			input.erase(0, 2);
-			textLength = std::stoul(input.substr(0, 8));
+			try
+			{
+				textLength = std::stoul(input.substr(0, 8));
+			}
+			catch (const std::out_of_range &e)
+			{
+				textLength = 0;
+			}
+			catch (const std::exception &e)
+			{
+				textLength = 0;
+			}
 			input.erase(0, 8);
 			std::string text = hexToString(input);
+			input = text;
 			textLength = static_cast<unsigned long>(text.length());
-			memcpy(message + 5, text.c_str(), textLength);
 		}
 		else // if normal message
 		{
 			commandID = 2; // ECHO command
 			textLength = static_cast<unsigned long>(input.length());
-			memcpy(message + 5, input.c_str(), textLength);
 		}
 		message[0] = static_cast<char>(commandID);
 		unsigned long netLength = htonl(textLength);
 		memcpy(message + 1, &netLength, 4);
-
-		int bytesSent = send(
-			clientSocket,
-			message,
-			static_cast<int>(textLength + 5),
-			0);
-		delete[] message;
-		if (bytesSent == SOCKET_ERROR)
+		if (textLength <= BUFFER_SIZE - 5)
 		{
-			if (errorCode == SOCKET_ERROR)
+			memcpy(message + 5, input.c_str(), textLength);
+			int bytesSent = send(
+				clientSocket,
+				message,
+				static_cast<int>(textLength + 5),
+				0);
+			if (bytesSent == SOCKET_ERROR)
 			{
+				if (errorCode == SOCKET_ERROR)
+				{
+					closesocket(clientSocket);
+					break;
+				}
 				closesocket(clientSocket);
 				break;
 			}
-			closesocket(clientSocket);
-			break;
 		}
-
-		if (commandID == 1)
+		else
 		{
-			if (errorCode == SOCKET_ERROR)
+			memcpy(message + 5, input.c_str(), BUFFER_SIZE - 5);
+			int bytesSent = send(
+				clientSocket,
+				message,
+				static_cast<int>(BUFFER_SIZE),
+				0);
+			if (bytesSent == SOCKET_ERROR)
 			{
+				if (errorCode == SOCKET_ERROR)
+				{
+					closesocket(clientSocket);
+					break;
+				}
 				closesocket(clientSocket);
 				break;
 			}
-			closesocket(clientSocket);
-			break;
+			input.erase(0, BUFFER_SIZE - 5);
+			int remainTextLength = static_cast<int>(textLength - (BUFFER_SIZE - 5));
+			while (remainTextLength > 0)
+			{
+				if (remainTextLength <= BUFFER_SIZE)
+				{
+					memcpy(message, input.c_str(), remainTextLength);
+					bytesSent = send(
+						clientSocket,
+						message,
+						remainTextLength,
+						0);
+					if (bytesSent == SOCKET_ERROR)
+					{
+						if (errorCode == SOCKET_ERROR)
+						{
+							closesocket(clientSocket);
+							break;
+						}
+						closesocket(clientSocket);
+						break;
+					}
+					remainTextLength = 0;
+				}
+				else
+				{
+					memcpy(message, input.c_str(), BUFFER_SIZE);
+					bytesSent = send(
+						clientSocket,
+						message,
+						BUFFER_SIZE,
+						0);
+					if (bytesSent == SOCKET_ERROR)
+					{
+						if (errorCode == SOCKET_ERROR)
+						{
+							closesocket(clientSocket);
+							break;
+						}
+						closesocket(clientSocket);
+						break;
+					}
+					input.erase(0, BUFFER_SIZE);
+					remainTextLength -= BUFFER_SIZE;
+				}
+			}
 		}
 
 		char buffer[BUFFER_SIZE];
@@ -254,13 +340,13 @@ int main(int argc)
 		else
 		{
 			std::string recvMessage(buffer + 5, bytesReceived - 5);
-			std::cout << recvMessage << std::endl;
+			std::cout << recvMessage;
 		}
 		unsigned long totalBytes{};
 		memcpy(&totalBytes, buffer + 1, 4);
 		totalBytes = ntohl(totalBytes);
 		unsigned long recvBytes = static_cast<unsigned long>(bytesReceived - 5);
-		while(recvBytes < totalBytes)
+		while (recvBytes < totalBytes)
 		{
 			const int bytesReceived = recv(
 				clientSocket,
@@ -293,11 +379,11 @@ int main(int argc)
 			else
 			{
 				std::string recvMessage(buffer, bytesReceived);
-				std::cout << recvMessage << std::endl;
+				std::cout << recvMessage;
 			}
 			recvBytes += static_cast<unsigned long>(bytesReceived);
 		}
-		
+		std::cout << std::endl;
 	}
 
 	// -------------------------------------------------------------------------

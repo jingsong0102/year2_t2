@@ -1,2 +1,6 @@
 ﻿  echoclient.cpp
+C:\Year2\t2\csd2161\ass01\ass01_client\echoclient.cpp(190,36): warning C4101: 'e': unreferenced local variable
+C:\Year2\t2\csd2161\ass01\ass01_client\echoclient.cpp(195,33): warning C4101: 'e': unreferenced local variable
+C:\Year2\t2\csd2161\ass01\ass01_client\echoclient.cpp(205,36): warning C4101: 'e': unreferenced local variable
+C:\Year2\t2\csd2161\ass01\ass01_client\echoclient.cpp(209,33): warning C4101: 'e': unreferenced local variable
   ass01_client.vcxproj -> C:\Year2\t2\csd2161\ass01\ass01_client\x64\Debug\ass01_client.exe
