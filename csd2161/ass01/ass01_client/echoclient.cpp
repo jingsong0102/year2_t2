@@ -185,7 +185,7 @@ int main(int argc)
 			input.erase(0, 3);
 			try
 			{
-				commandID = std::stoul(input.substr(0, 2));
+				commandID = std::stoul(input.substr(0, 2), 0, 16);
 			}
 			//invalid command ID
 			catch (const std::out_of_range &e)
@@ -202,7 +202,7 @@ int main(int argc)
 			input.erase(0, 2);
 			try
 			{
-				textLength = static_cast<unsigned long>(std::stoul(input.substr(0, 8)));
+				textLength = std::stoi(input.substr(0, 8), 0, 16);
 			}
 			//invalid text length
 			catch (const std::out_of_range &e)
