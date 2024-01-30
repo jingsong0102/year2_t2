@@ -36,7 +36,7 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 #include <vector>	// vector
 #include <limits>
 #include <sstream>
-// This function converts a string of hexadecimal digits into a string
+// Helper function converts a string of hexadecimal digits into a string
 std::string hexToString(const std::string &hex)
 {
 	std::string str;
@@ -160,7 +160,7 @@ int main(int argc)
 			closesocket(clientSocket);
 			break;
 		}
-		char message[BUFFER_SIZE];
+		char message[BUFFER_SIZE]{};
 		// if quit
 		if (input[0] == '/' && input[1] == 'q')
 		{
@@ -187,14 +187,16 @@ int main(int argc)
 			{
 				commandID = std::stoul(input.substr(0, 2));
 			}
+			//invalid command ID
 			catch (const std::out_of_range &e)
 			{
 				commandID = 0;
-				
+				(void)e;
 			}
 			catch (const std::exception &e)
 			{
 				commandID = 0;
+				(void)e;
 			}
 
 			input.erase(0, 2);
@@ -202,13 +204,16 @@ int main(int argc)
 			{
 				textLength = static_cast<unsigned long>(std::stoul(input.substr(0, 8)));
 			}
+			//invalid text length
 			catch (const std::out_of_range &e)
 			{
 				textLength = -1;
+				(void)e;
 			}
 			catch (const std::exception &e)
 			{
 				textLength = -1;
+				(void)e;
 			}
 			input.erase(0, 8);
 			std::string text = hexToString(input);
@@ -222,6 +227,7 @@ int main(int argc)
 		message[0] = static_cast<char>(commandID);
 		unsigned long netLength = htonl(static_cast<unsigned long>(textLength));
 		memcpy(message + 1, &netLength, 4);
+		//if message can be sent in one chunk
 		if (textLength <= BUFFER_SIZE - 5)
 		{
 			memcpy(message + 5, input.c_str(), textLength);
@@ -241,7 +247,7 @@ int main(int argc)
 				break;
 			}
 		}
-		else
+		else //loop until all message is sent
 		{
 			memcpy(message + 5, input.c_str(), BUFFER_SIZE - 5);
 			int bytesSent = send(
@@ -306,7 +312,7 @@ int main(int argc)
 				}
 			}
 		}
-
+		//receive message from server
 		char buffer[BUFFER_SIZE];
 		const int bytesReceived = recv(
 			clientSocket,
@@ -344,7 +350,9 @@ int main(int argc)
 		unsigned long totalBytes{};
 		memcpy(&totalBytes, buffer + 1, 4);
 		totalBytes = ntohl(totalBytes);
+		//if there is remaining message
 		unsigned long recvBytes = static_cast<unsigned long>(bytesReceived - 5);
+		//loop until all message is received
 		while (recvBytes < totalBytes)
 		{
 			const int bytesReceived = recv(
