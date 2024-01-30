@@ -142,7 +142,7 @@ int main(int argc)
 
 	constexpr size_t BUFFER_SIZE = 1000;
 	unsigned long commandID{};
-	unsigned long textLength{};
+	int textLength{};
 	// ignore newline char left by key in ip and port
 	std::cin.ignore((std::numeric_limits<std::streamsize>::max)(), '\n');
 	while (true)
@@ -200,28 +200,27 @@ int main(int argc)
 			input.erase(0, 2);
 			try
 			{
-				textLength = std::stoul(input.substr(0, 8));
+				textLength = static_cast<unsigned long>(std::stoul(input.substr(0, 8)));
 			}
 			catch (const std::out_of_range &e)
 			{
-				textLength = 0;
+				textLength = -1;
 			}
 			catch (const std::exception &e)
 			{
-				textLength = 0;
+				textLength = -1;
 			}
 			input.erase(0, 8);
 			std::string text = hexToString(input);
 			input = text;
-			textLength = static_cast<unsigned long>(text.length());
 		}
 		else // if normal message
 		{
 			commandID = 2; // ECHO command
-			textLength = static_cast<unsigned long>(input.length());
+			textLength = static_cast<int>(input.length());
 		}
 		message[0] = static_cast<char>(commandID);
-		unsigned long netLength = htonl(textLength);
+		unsigned long netLength = htonl(static_cast<unsigned long>(textLength));
 		memcpy(message + 1, &netLength, 4);
 		if (textLength <= BUFFER_SIZE - 5)
 		{

@@ -233,7 +233,7 @@ int main()
 				unsigned long netLength;
 				memcpy(&netLength, buffer + 1, 4); // Offset by 1 to skip command ID
 				hostLength = ntohl(netLength);
-				if (hostLength <= 0)
+				if (static_cast<int>(hostLength) <= 0)
 				{
 					std::cout << "Error invalid message length" << std::endl;
 					closesocket(clientSocket);
