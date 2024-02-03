@@ -45,7 +45,7 @@ void DumpPagesEx(const ObjectAllocator* nm, unsigned width = 16);
 
 void DoStudents(unsigned padding = 0, bool printall = false);    // debug, padding=X
 void DoEmployees(void);               // debug
-void TestPadding(unsigned size);               // DoStudents(padding=16)
+void TestPadding(unsigned size);      // DoStudents(padding=16)
 void TestBasicHeaderBlocks();         // debug, header
 void TestCorruption(void);            // debug, padding=8
 void DisableOA(void);                 // cpp_mem_mgr

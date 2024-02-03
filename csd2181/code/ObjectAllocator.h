@@ -1,3 +1,12 @@
+/*!
+@file ObjectAllocator.h
+@author Wei Jingsong (jingsong.wei@digipen.edu)
+@course csd2183
+@section A
+@assignent 1
+@date 2/02/2024
+@brief This file contains the declaration of the ObjectAllocator class and its related classes and structures.
+*/
 //---------------------------------------------------------------------------
 #ifndef OBJECTALLOCATORH
 #define OBJECTALLOCATORH
@@ -6,7 +15,7 @@
 #include <string>
 
 // If the client doesn't specify these:
-static const int DEFAULT_OBJECTS_PER_PAGE = 4;  
+static const int DEFAULT_OBJECTS_PER_PAGE = 4;
 static const int DEFAULT_MAX_PAGES = 3;
 
 /*!
@@ -14,60 +23,63 @@ static const int DEFAULT_MAX_PAGES = 3;
 */
 class OAException
 {
-  public:
-    /*!
-      Possible exception codes
-    */
-    enum OA_EXCEPTION 
-    {
-      E_NO_MEMORY,      //!< out of physical memory (operator new fails)
-      E_NO_PAGES,       //!< out of logical memory (max pages has been reached)
-      E_BAD_BOUNDARY,   //!< block address is on a page, but not on any block-boundary
-      E_MULTIPLE_FREE,  //!< block has already been freed
-      E_CORRUPTED_BLOCK //!< block has been corrupted (pad bytes have been overwritten)
-    };
+public:
+  /*!
+    Possible exception codes
+  */
+  enum OA_EXCEPTION
+  {
+    E_NO_MEMORY,      //!< out of physical memory (operator new fails)
+    E_NO_PAGES,       //!< out of logical memory (max pages has been reached)
+    E_BAD_BOUNDARY,   //!< block address is on a page, but not on any block-boundary
+    E_MULTIPLE_FREE,  //!< block has already been freed
+    E_CORRUPTED_BLOCK //!< block has been corrupted (pad bytes have been overwritten)
+  };
 
-    /*!
-      Constructor
+  /*!
+    Constructor
 
-      \param ErrCode
-        One of the 5 error codes listed above
+    \param ErrCode
+      One of the 5 error codes listed above
 
-      \param Message
-        A message returned by the what method.
-    */
-    OAException(OA_EXCEPTION ErrCode, const std::string& Message) : error_code_(ErrCode), message_(Message) {};
+    \param Message
+      A message returned by the what method.
+  */
+  OAException(OA_EXCEPTION ErrCode, const std::string &Message) : error_code_(ErrCode), message_(Message){};
 
-    /*!
-      Destructor
-    */
-    virtual ~OAException() {
-    }
+  /*!
+    Destructor
+  */
+  virtual ~OAException()
+  {
+  }
 
-    /*!
-      Retrieves the error code
+  /*!
+    Retrieves the error code
 
-      \return
-        One of the 5 error codes.
-    */
-    OA_EXCEPTION code() const { 
-      return error_code_; 
-    }
+    \return
+      One of the 5 error codes.
+  */
+  OA_EXCEPTION code() const
+  {
+    return error_code_;
+  }
 
-    /*!
-      Retrieves a human-readable string regarding the error.
+  /*!
+    Retrieves a human-readable string regarding the error.
 
-      \return
-        The NUL-terminated string representing the error.
-    */
-    virtual const char *what() const {
-      return message_.c_str();
-    }
-  private:  
-    OA_EXCEPTION error_code_; //!< The error code (one of the 5)
-    std::string message_;     //!< The formatted string for the user.
+    \return
+      The NUL-terminated string representing the error.
+  */
+  virtual const char *what() const
+  {
+    return message_.c_str();
+  }
+
+private:
+  OA_EXCEPTION error_code_; //!< The error code (one of the 5)
+  std::string message_;     //!< The formatted string for the user.
 };
-
 
 /*!
   ObjectAllocator configuration parameters
@@ -75,12 +87,18 @@ class OAException
 struct OAConfig
 {
   static const size_t BASIC_HEADER_SIZE = sizeof(unsigned) + 1; //!< allocation number + flags
-  static const size_t EXTERNAL_HEADER_SIZE = sizeof(void*);     //!< just a pointer
+  static const size_t EXTERNAL_HEADER_SIZE = sizeof(void *);    //!< just a pointer
 
   /*!
     The different types of header blocks
   */
-  enum HBLOCK_TYPE{hbNone, hbBasic, hbExtended, hbExternal};
+  enum HBLOCK_TYPE
+  {
+    hbNone,
+    hbBasic,
+    hbExtended,
+    hbExternal
+  };
 
   /*!
     POD that stores the information related to the header blocks.
@@ -138,21 +156,21 @@ struct OAConfig
       The number of bytes to align on.
   */
   OAConfig(bool UseCPPMemManager = false,
-           unsigned ObjectsPerPage = DEFAULT_OBJECTS_PER_PAGE, 
-           unsigned MaxPages = DEFAULT_MAX_PAGES, 
-           bool DebugOn = false, 
+           unsigned ObjectsPerPage = DEFAULT_OBJECTS_PER_PAGE,
+           unsigned MaxPages = DEFAULT_MAX_PAGES,
+           bool DebugOn = false,
            unsigned PadBytes = 0,
            const HeaderBlockInfo &HBInfo = HeaderBlockInfo(),
            unsigned Alignment = 0) : UseCPPMemManager_(UseCPPMemManager),
-                                     ObjectsPerPage_(ObjectsPerPage), 
-                                     MaxPages_(MaxPages), 
-                                     DebugOn_(DebugOn), 
+                                     ObjectsPerPage_(ObjectsPerPage),
+                                     MaxPages_(MaxPages),
+                                     DebugOn_(DebugOn),
                                      PadBytes_(PadBytes),
                                      HBlockInfo_(HBInfo),
                                      Alignment_(Alignment)
   {
     HBlockInfo_ = HBInfo;
-    LeftAlignSize_ = 0;  
+    LeftAlignSize_ = 0;
     InterAlignSize_ = 0;
   }
 
@@ -167,7 +185,6 @@ struct OAConfig
   unsigned InterAlignSize_;    //!< number of alignment bytes required between remaining blocks
 };
 
-
 /*!
   POD that holds the ObjectAllocator statistical info
 */
@@ -177,7 +194,7 @@ struct OAStats
     Constructor
   */
   OAStats() : ObjectSize_(0), PageSize_(0), FreeObjects_(0), ObjectsInUse_(0), PagesInUse_(0),
-                  MostObjects_(0), Allocations_(0), Deallocations_(0) {};
+              MostObjects_(0), Allocations_(0), Deallocations_(0){};
 
   size_t ObjectSize_;      //!< size of each object
   size_t PageSize_;        //!< size of a page including all headers, padding, etc.
@@ -212,59 +229,127 @@ struct MemBlockInfo
 */
 class ObjectAllocator
 {
-  public:
-      // Defined by the client (pointer to a block, size of block)
-    typedef void (*DUMPCALLBACK)(const void *, size_t);     //!< Callback function when dumping memory leaks
-    typedef void (*VALIDATECALLBACK)(const void *, size_t); //!< Callback function when validating blocks
+public:
+  // Defined by the client (pointer to a block, size of block)
+  typedef void (*DUMPCALLBACK)(const void *, size_t);     //!< Callback function when dumping memory leaks
+  typedef void (*VALIDATECALLBACK)(const void *, size_t); //!< Callback function when validating blocks
 
-      // Predefined values for memory signatures
-    static const unsigned char UNALLOCATED_PATTERN = 0xAA; //!< New memory never given to the client
-    static const unsigned char ALLOCATED_PATTERN =   0xBB; //!< Memory owned by the client
-    static const unsigned char FREED_PATTERN =       0xCC; //!< Memory returned by the client
-    static const unsigned char PAD_PATTERN =         0xDD; //!< Pad signature to detect buffer over/under flow
-    static const unsigned char ALIGN_PATTERN =       0xEE; //!< For the alignment bytes
+  // Predefined values for memory signatures
+  static const unsigned char UNALLOCATED_PATTERN = 0xAA; //!< New memory never given to the client
+  static const unsigned char ALLOCATED_PATTERN = 0xBB;   //!< Memory owned by the client
+  static const unsigned char FREED_PATTERN = 0xCC;       //!< Memory returned by the client
+  static const unsigned char PAD_PATTERN = 0xDD;         //!< Pad signature to detect buffer over/under flow
+  static const unsigned char ALIGN_PATTERN = 0xEE;       //!< For the alignment bytes
 
-      // Creates the ObjectManager per the specified values
-      // Throws an exception if the construction fails. (Memory allocation problem)
-    ObjectAllocator(size_t ObjectSize, const OAConfig& config);
+  // Creates the ObjectManager per the specified values
+  // Throws an exception if the construction fails. (Memory allocation problem)
+  ObjectAllocator(size_t ObjectSize, const OAConfig &config);
 
-      // Destroys the ObjectManager (never throws)
-    ~ObjectAllocator();
+  // Destroys the ObjectManager (never throws)
+  ~ObjectAllocator();
 
-      // Take an object from the free list and give it to the client (simulates new)
-      // Throws an exception if the object can't be allocated. (Memory allocation problem)
-    void *Allocate(const char *label = 0);
+  // Take an object from the free list and give it to the client (simulates new)
+  // Throws an exception if the object can't be allocated. (Memory allocation problem)
+  void *Allocate(const char *label = 0);
 
-      // Returns an object to the free list for the client (simulates delete)
-      // Throws an exception if the the object can't be freed. (Invalid object)
-    void Free(void *Object);
+  // Returns an object to the free list for the client (simulates delete)
+  // Throws an exception if the the object can't be freed. (Invalid object)
+  void Free(void *Object);
 
-      // Calls the callback fn for each block still in use
-    unsigned DumpMemoryInUse(DUMPCALLBACK fn) const;
+  // Calls the callback fn for each block still in use
+  unsigned DumpMemoryInUse(DUMPCALLBACK fn) const;
 
-      // Calls the callback fn for each block that is potentially corrupted
-    unsigned ValidatePages(VALIDATECALLBACK fn) const;
+  // Calls the callback fn for each block that is potentially corrupted
+  unsigned ValidatePages(VALIDATECALLBACK fn) const;
 
-      // Frees all empty page
-    unsigned FreeEmptyPages();
+  // Frees all empty page
+  unsigned FreeEmptyPages();
 
-      // Testing/Debugging/Statistic methods
-    void SetDebugState(bool State);   // true=enable, false=disable
-    const void *GetFreeList() const;  // returns a pointer to the internal free list
-    const void *GetPageList() const;  // returns a pointer to the internal page list
-    OAConfig GetConfig() const;       // returns the configuration parameters
-    OAStats GetStats() const;         // returns the statistics for the allocator
+  // Testing/Debugging/Statistic methods
+  void SetDebugState(bool State);  // true=enable, false=disable
+  const void *GetFreeList() const; // returns a pointer to the internal free list
+  const void *GetPageList() const; // returns a pointer to the internal page list
+  OAConfig GetConfig() const;      // returns the configuration parameters
+  OAStats GetStats() const;        // returns the statistics for the allocator
 
-      // Prevent copy construction and assignment
-    ObjectAllocator(const ObjectAllocator &oa) = delete;            //!< Do not implement!
-    ObjectAllocator &operator=(const ObjectAllocator &oa) = delete; //!< Do not implement!
+  // Prevent copy construction and assignment
+  ObjectAllocator(const ObjectAllocator &oa) = delete;            //!< Do not implement!
+  ObjectAllocator &operator=(const ObjectAllocator &oa) = delete; //!< Do not implement!
 
-  private:
-      // Some "suggested" members (only a suggestion!)
-    GenericObject *PageList_; //!< the beginning of the list of pages
-    GenericObject *FreeList_; //!< the beginning of the list of objects
-    
-    // Lots of other private stuff... 
+private:
+  // Some "suggested" members (only a suggestion!)
+  GenericObject *PageList_; //!< the beginning of the list of pages
+  GenericObject *FreeList_; //!< the beginning of the list of objects
+
+  // Lots of other private stuff...
+  OAConfig config_;          //!< The configuration parameters for this allocator
+  OAStats stats_;            //!< The statistics for this allocator
+  size_t midBlock;           //!< The size of the middle block
+  size_t leftBlock;          //!< The size of the left block
+  size_t InnerBlock;         //!< The size of the right block
+  OAException *OAException_; //!< The exception class
+  char *newPage;             //!< The new page
+  char *lowerBound;          //!< The lower bound
+  char *upperBound;          //!< The upper bound
+  enum PadState              //!< The state of the padding
+  {
+    NO_CORRUPT,
+    CORRUPT_LEFT,
+    CORRUPT_RIGHT
+  } padState_;
+  char *NewPage;   //!< The new page
+  char *NewObject; //!< The new object
+
+  // Private methods
+  /**
+   * Allocates memory for a new page.
+   *
+   * @return Pointer to the allocated memory.
+   * @throws OAException if memory allocation fails.
+   */
+  char *PageAllocator();
+  /**
+   * Checks if a memory page is empty.
+   *
+   * @param page Pointer to the memory page.
+   * @return True if the page is empty, false otherwise.
+   */
+  bool isPageEmpty(void *page) const;
+  /**
+   * Checks if a memory block has a specific pattern.
+   *
+   * @param block Pointer to the memory block.
+   * @param pattern The pattern to check for.
+   * @return True if the pattern is found, false otherwise.
+   */
+  bool checkPattern(void *block, const unsigned char pattern) const;
+  /**
+   * Aligns memory blocks to a specific alignment.
+   */
+  void Alignment();
+  /**
+   * Checks if a memory block has a specific pattern.
+   *
+   * @param block Pointer to the memory block.
+   * @param pattern The pattern to check for.
+   * @return True if the pattern is found, false otherwise.
+   */
+  bool checkObjectPattern(void *block, const unsigned char pattern) const;
+  /**
+   * Finds a memory page that contains a specific memory block.
+   *
+   * @param page_ Pointer to the memory page.
+   * @param Object Pointer to the memory block.
+   * @return 1 if the page is found, -1 otherwise.
+   */
+  int FindPage(GenericObject *&page, void *Object) const;
+  /**
+   * Checks if the padding of a memory block is corrupted.
+   *
+   * @param block Pointer to the memory block.
+   * @return The state of the padding.
+   */
+  ObjectAllocator::PadState isPadCorrupted(void *block) const;
 };
 
 #endif
