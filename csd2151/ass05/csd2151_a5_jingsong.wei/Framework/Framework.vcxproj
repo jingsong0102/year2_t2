@@ -307,8 +307,8 @@ powershell Compress-Archive -Path "..\CGFW" -Update -DestinationPath ..\CGFW_$([
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Framework.frag.glsl" />
-    <None Include="Framework.vert.glsl" />
+    <None Include="EnvironmentMap.frag.glsl" />
+    <None Include="EnvironmentMap.vert.glsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

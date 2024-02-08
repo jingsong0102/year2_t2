@@ -37,27 +37,8 @@ vec4 checkerboardTexture(vec2 uv, float size)
     int checker = int(floor(uv.x) + floor(uv.y)) % 2;
 
     // Return black or white based on the checker value
-    return checker ? vec4(1.0f, 1.0f, 1.0f, 1.0f) : vec4(0.0f, 0.0f, 0.0f, 1.0f);
+    return checker > 0 ? vec4(1.0f, 1.0f, 1.0f, 1.0f) : vec4(0.0f, 0.0f, 0.0f, 1.0f);
 }
-// if (abs(v.x) > abs(v.y) && abs(v.x) > abs(v.z))
-// {                // Side walls
-//     if (v.x > 0) // Right wall
-//         return vec2(1.0 - (v.z + 1.0) / 2.0, 1.0 - (v.y + 1.0) / 2.0);
-//     else // Left wall
-//         return vec2((v.z + 1.0) / 2.0, 1.0 - (v.y + 1.0) / 2.0);
-// }
-// else if (abs(v.z) > abs(v.y))
-// {                // Front or back wall
-//     if (v.z < 0) // Front wall
-//         return vec2((v.x + 1.0) / 2.0, 1.0 - (v.y + 1.0) / 2.0);
-//     else // Back wall
-//         return vec2(1.0 - (v.x + 1.0) / 2.0, 1.0 - (v.y + 1.0) / 2.0);
-// }
-// else
-// { // Top or bottom wall, return (0.0, 0.0)
-//     return vec2(0.0f, 0.0f);
-// }
-
 /*
 You have to implement a function that can solve a simplified version of the cube mapping problem, when only back faces of the skybox (which is a cube) are mapped, the other two (top and bottom) are not used. Each internal face of the cube has the same texture coordinates from (0, 0) to (1, 1) at the bottom-left and top-right corners of the face.
 Given:
