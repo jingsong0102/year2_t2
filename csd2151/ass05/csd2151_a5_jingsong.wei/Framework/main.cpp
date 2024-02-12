@@ -29,8 +29,15 @@ bool mode_alt = false;
 void keyCallback(GLFWwindow *pWindow, int key, int scancode, int action, int mods)
 {
     if (action == GLFW_PRESS)
+    {
         if (key == GLFW_KEY_ESCAPE)
             glfwSetWindowShouldClose(pWindow, GL_TRUE);
+        // else if (key == GLFW_KEY_0) {
+        //     pScene->passes[1].objects[0].material.params["material.reflectionFactor"] = { 0.f };
+        //     // Apply the updated material properties
+        //     pScene->passes[1].objects[0].material.setUniforms(&(pScene->shader));
+        // }
+    }
 }
 
 /*
@@ -234,7 +241,6 @@ int main(int argc, char **argv)
                             {TORUS,
                              MATERIAL_REFLECT_REFRACT,
                              glm::translate(glm::mat4(1.0f), {0.0f, 0.0f, -4.0f})}},
-
                         // The camera
                         {
                             {{3.0f, 0.0f, 0.0f}}},
