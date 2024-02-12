@@ -1,25 +1,20 @@
 R"(
 #version 420
 
-
-// Material properties for reflection and refraction
 struct Material 
 {
     vec4 color;             
     float reflectionFactor; // The light reflection factor
     float eta;              // The ratio of indices of refraction
 };
+uniform Material material;
+uniform int Pass; 
 
-uniform int Pass; // Pass number
-
-layout(binding=0) uniform samplerCube CubeMapTex;
+in vec3 ReflectDir;
+in vec3 RefractDir;
+in vec3 TexCoord;
 
 layout(location=0) out vec4 FragColor;
-
-
-// Pass 0
-
-in vec3 Vec;
 
 vec4 checkboardTexture(vec2 uv, float size)
 {
@@ -74,24 +69,17 @@ vec2 vec2uv(vec3 v)
 }
 
 
-
+// Pass 0
 void pass0() 
 {
     // Access the cube map texture
-    vec3 color = checkboardTexture(vec2uv(normalize(Vec)), 10.0f).rgb;
-
+    vec3 color = checkboardTexture(vec2uv(normalize(TexCoord)), 10.f).rgb;
     // Gamma correction
     color = pow(color, vec3(1.0f/2.2f));
+
     FragColor = vec4(color, 1.0f);
 }
-
 // Pass 1
-
-in vec3 ReflectDir;
-in vec3 RefractDir;
-
-uniform Material material;
-
 void pass1() 
 {
     // Access the cube map texture

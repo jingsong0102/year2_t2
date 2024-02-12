@@ -166,12 +166,12 @@ int main(int argc, char **argv)
             {
                 // Vertex shader
                 {
-                    #include "EnvironmentMap.vert.glsl"
+#include "EnvironmentMap.vert.glsl"
                 },
 
                 // Fragment shader
                 {
-                    #include "EnvironmentMap.frag.glsl"
+#include "EnvironmentMap.frag.glsl"
                 },
 
                 // Passes
@@ -200,8 +200,7 @@ int main(int argc, char **argv)
 
                         // Lights
                         {
-
-                        },
+                            DEFAULT},
 
                         // Textures
                         {
@@ -209,8 +208,7 @@ int main(int argc, char **argv)
                         },
 
                         // Setup uniforms in the shader
-                        NULL
-                        },
+                        NULL},
 
                     // Pass 1 (to render the object)
                     {
@@ -243,8 +241,7 @@ int main(int argc, char **argv)
 
                         // Lights
                         {
-
-                        },
+                            DEFAULT},
 
                         // Textures
                         {
