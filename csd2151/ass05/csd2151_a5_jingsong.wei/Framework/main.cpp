@@ -237,13 +237,13 @@ int main(int argc, char **argv)
                              MATERIAL_REFLECT_REFRACT},
                             {CUBE,
                              MATERIAL_REFLECT_REFRACT,
-                             glm::translate(glm::mat4(1.0f), {0.0f, 0.0f, 4.0f})},
+                             glm::translate(glm::mat4(1.0f), {0.0f, 0.0f, 3.5f})},
                             {TORUS,
                              MATERIAL_REFLECT_REFRACT,
-                             glm::translate(glm::mat4(1.0f), {0.0f, 0.0f, -4.0f})}},
+                             glm::translate(glm::mat4(1.0f), {0.0f, 0.0f, -3.5f})}},
                         // The camera
                         {
-                            {{3.0f, 0.0f, 0.0f}}},
+                            {{-3.0f, 0.0f, 0.0f}}},
 
                         // Lights
                         {
