@@ -33,7 +33,7 @@ void keyCallback(GLFWwindow *pWindow, int key, int scancode, int action, int mod
         if (key == GLFW_KEY_ESCAPE)
             glfwSetWindowShouldClose(pWindow, GL_TRUE);
         // else if (key == GLFW_KEY_0) {
-        //     pScene->passes[1].objects[0].material.params["material.reflectionFactor"] = { 0.f };
+             //pScene->passes[1].objects[0].material.params["material.reflectionFactor"] = { 0.f };
         //     // Apply the updated material properties
         //     pScene->passes[1].objects[0].material.setUniforms(&(pScene->shader));
         // }
@@ -184,38 +184,45 @@ int main(int argc, char **argv)
                 // Passes
                 {
                     // Pass 0 (to render background)
-                    {
+               {
                         // Rendering target
                         DEFAULT,
 
                         // Viewport
-                        {0, 0, WIDTH, HEIGHT},
+                        { 0, 0, WIDTH, HEIGHT },
 
                         // Color to clear buffers
-                        {},
+                        { },
 
                         // Depth test
                         ENABLE,
 
                         // Objects
                         {
-                            {SKYBOX}},
-
-                        // The camera
-                        {
-                            {{3.0f, 0.0f, 0.0f}}},
-
-                        // Lights
-                        {
-                            DEFAULT},
-
-                        // Textures
-                        {
-
+                            {
+                               SKYBOX
+                            }
                         },
 
-                        // Setup uniforms in the shader
-                        NULL},
+            // The camera
+            {
+                { { 0.0f, 0.0f, 3.0f } }
+            },
+
+            // Lights
+            {
+
+            },
+
+            // Textures
+            {
+
+            },
+
+            // Setup uniforms in the shader
+            NULL
+        },
+
 
                     // Pass 1 (to render the object)
                     {
@@ -237,13 +244,14 @@ int main(int argc, char **argv)
                              MATERIAL_REFLECT_REFRACT},
                             {CUBE,
                              MATERIAL_REFLECT_REFRACT,
-                             glm::translate(glm::mat4(1.0f), {0.0f, 0.0f, 3.5f})},
+                             glm::translate(glm::mat4(1.0f), {3.5f, 0.0f, 0.f})},
                             {TORUS,
                              MATERIAL_REFLECT_REFRACT,
-                             glm::translate(glm::mat4(1.0f), {0.0f, 0.0f, -3.5f})}},
+                             glm::translate(glm::mat4(1.0f), {-3.5f, 0.0f, 0.f})
+                             }},
                         // The camera
                         {
-                            {{-3.0f, 0.0f, 0.0f}}},
+                            {{0.0f, 0.0f, 3.0f}}},
 
                         // Lights
                         {
