@@ -1,0 +1,36 @@
+==================== test8_1 ====================
+nodesize is 24
+Node   1 ( 1): 56 
+Node   2 ( 1): 59 
+Node   3 ( 1): 87 
+Node   4 ( 1): 79 
+Node   5 ( 1): 97 
+Node   6 ( 1): 96 
+Node   7 ( 1): 29 
+Node   8 ( 1): 41 
+Node   9 ( 1): 35 
+Node  10 ( 1): 52 
+Node  11 ( 1): 50 
+Node  12 ( 1): 75 
+Node  13 ( 1): 89 
+Node  14 ( 1): 16 
+Node  15 ( 1): 43 
+Node  16 ( 1): 28 
+
+Removing value 16
+Removing value 28
+Removing value 29
+Removing value 35
+Removing value 41
+Removing value 43
+Removing value 50
+Removing value 52
+Removing value 56
+Removing value 59
+Removing value 75
+Removing value 79
+Node   1 ( 1): 87 
+Node   2 ( 1): 97 
+Node   3 ( 1): 96 
+Node   4 ( 1): 89 
+

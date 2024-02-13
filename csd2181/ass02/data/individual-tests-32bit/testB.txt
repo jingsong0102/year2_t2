@@ -1,0 +1,10 @@
+===== both are full: split left =====
+nodesize is 20
+Node   1 ( 2): 20 30 
+Node   2 ( 2): 40 50 
+
+Node   1 ( 1): 20 
+Node   2 ( 2): 30 35 
+Node   3 ( 2): 40 50 
+
+

@@ -1,0 +1,29 @@
+==================== test5_16 ====================
+nodesize is 76
+List: 99 24 28 32 58 96 66 59 12 56 34 39 31 45 11 73 
+Node   1 (16): 99 24 28 32 58 96 66 59 12 56 34 39 31 45 11 73 
+
+Found 99 at index 0
+Found 24 at index 1
+Found 28 at index 2
+Found 32 at index 3
+Found 58 at index 4
+Found 96 at index 5
+Found 66 at index 6
+Found 59 at index 7
+Found 12 at index 8
+Found 56 at index 9
+Found 34 at index 10
+Found 39 at index 11
+Found 31 at index 12
+Found 45 at index 13
+Found 11 at index 14
+Found 73 at index 15
+
+Asize: 16
+Items: 16
+Nodes: 1
+Average items per node: 16
+Node utilization: 100%
+
+

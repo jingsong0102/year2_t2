@@ -1,0 +1,46 @@
+==================== test4_16 ====================
+nodesize is 16
+Node   1 ( 1): 16 
+Node   2 ( 1): 28 
+Node   3 ( 1): 29 
+Node   4 ( 1): 35 
+Node   5 ( 1): 41 
+Node   6 ( 1): 43 
+Node   7 ( 1): 50 
+Node   8 ( 1): 52 
+Node   9 ( 1): 56 
+Node  10 ( 1): 59 
+Node  11 ( 1): 75 
+Node  12 ( 1): 79 
+Node  13 ( 1): 87 
+Node  14 ( 1): 89 
+Node  15 ( 1): 96 
+Node  16 ( 1): 97 
+
+16 28 29 35 41 43 50 52 56 59 75 79 87 89 96 97 
+
+Node   1 ( 1): 16 
+Node   2 ( 1): 28 
+Node   3 ( 1): 29 
+Node   4 ( 1): 35 
+Node   5 ( 1): 41 
+Node   6 ( 1): 43 
+Node   7 ( 1): 50 
+Node   8 ( 1): 52 
+Node   9 ( 1): 56 
+Node  10 ( 1): 59 
+Node  11 ( 1): 75 
+Node  12 ( 1): 79 
+Node  13 ( 1): 87 
+Node  14 ( 1): 89 
+Node  15 ( 1): 96 
+Node  16 ( 1): 97 
+
+List: 16 28 29 35 41 43 50 52 56 59 75 79 87 89 96 97 
+Asize: 1
+Items: 16
+Nodes: 16
+Average items per node: 1
+Node utilization: 100%
+
+

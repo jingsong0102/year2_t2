@@ -1,0 +1,13 @@
+==================== test1_8 ====================
+nodesize is 56
+Node   1 ( 8): 16 15 14 13 12 11 10 9 
+Node   2 ( 8): 8 7 6 5 4 3 2 1 
+
+List: 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 
+Asize: 8
+Items: 16
+Nodes: 2
+Average items per node: 8
+Node utilization: 100%
+
+

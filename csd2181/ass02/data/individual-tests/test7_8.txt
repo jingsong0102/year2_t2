@@ -1,0 +1,24 @@
+==================== test7_8 ====================
+nodesize is 56
+Node   1 ( 8): 56 59 87 79 97 96 29 41 
+Node   2 ( 8): 35 52 50 75 89 16 43 28 
+
+Removing from index 15
+List: 56 59 87 79 97 96 29 41 35 52 50 75 89 16 43 
+Removing from index 13
+List: 56 59 87 79 97 96 29 41 35 52 50 75 89 43 
+Removing from index 11
+List: 56 59 87 79 97 96 29 41 35 52 50 89 43 
+Removing from index 9
+List: 56 59 87 79 97 96 29 41 35 50 89 43 
+Removing from index 7
+List: 56 59 87 79 97 96 29 35 50 89 43 
+Removing from index 5
+List: 56 59 87 79 97 29 35 50 89 43 
+Removing from index 3
+List: 56 59 87 97 29 35 50 89 43 
+Removing from index 1
+List: 56 87 97 29 35 50 89 43 
+Node   1 ( 4): 56 87 97 29 
+Node   2 ( 4): 35 50 89 43 
+

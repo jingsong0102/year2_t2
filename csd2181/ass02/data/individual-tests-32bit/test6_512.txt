@@ -1,0 +1,30 @@
+==================== test6_512 ====================
+nodesize is 2060
+Found 7454 at index 5721
+Found 6183 at index 4590
+Found 3660 at index 2353
+Found 7681 at index 5925
+Found 8950 at index 7062
+Found 2257 at index 1124
+Found 4881 at index 3449
+Found 7524 at index 5783
+Found 5558 at index 4033
+Found 1992 at index 887
+Found 7956 at index 6167
+Found 9351 at index 7424
+Found 5941 at index 4375
+Found 6021 at index 4447
+Found 9184 at index 7275
+Found 8231 at index 6415
+Found 3538 at index 2244
+Found 3835 at index 2516
+Found 4940 at index 3497
+Found 1243 at index 212
+
+Asize: 512
+Items: 8000
+Nodes: 22
+Average items per node: 364
+Node utilization: 71%
+
+

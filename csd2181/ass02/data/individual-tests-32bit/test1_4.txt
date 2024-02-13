@@ -1,0 +1,15 @@
+==================== test1_4 ====================
+nodesize is 28
+Node   1 ( 4): 16 15 14 13 
+Node   2 ( 4): 12 11 10 9 
+Node   3 ( 4): 8 7 6 5 
+Node   4 ( 4): 4 3 2 1 
+
+List: 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 
+Asize: 4
+Items: 16
+Nodes: 4
+Average items per node: 4
+Node utilization: 100%
+
+

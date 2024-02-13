@@ -1,0 +1,44 @@
+==================== test5_1 ====================
+nodesize is 24
+List: 99 24 28 32 58 96 66 59 12 56 34 39 31 45 11 73 
+Node   1 ( 1): 99 
+Node   2 ( 1): 24 
+Node   3 ( 1): 28 
+Node   4 ( 1): 32 
+Node   5 ( 1): 58 
+Node   6 ( 1): 96 
+Node   7 ( 1): 66 
+Node   8 ( 1): 59 
+Node   9 ( 1): 12 
+Node  10 ( 1): 56 
+Node  11 ( 1): 34 
+Node  12 ( 1): 39 
+Node  13 ( 1): 31 
+Node  14 ( 1): 45 
+Node  15 ( 1): 11 
+Node  16 ( 1): 73 
+
+Found 99 at index 0
+Found 24 at index 1
+Found 28 at index 2
+Found 32 at index 3
+Found 58 at index 4
+Found 96 at index 5
+Found 66 at index 6
+Found 59 at index 7
+Found 12 at index 8
+Found 56 at index 9
+Found 34 at index 10
+Found 39 at index 11
+Found 31 at index 12
+Found 45 at index 13
+Found 11 at index 14
+Found 73 at index 15
+
+Asize: 1
+Items: 16
+Nodes: 16
+Average items per node: 1
+Node utilization: 100%
+
+
