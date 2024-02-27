@@ -1,3 +1,13 @@
+/*!
+@file BList.h
+@author Wei Jingsong (jingsong.wei@digipen.edu)
+@SIT id 2200646
+@course csd2183
+@section A
+@assignent 2
+@date 2/17/2024
+@brief This file contains the declaration of the BList class and its related classes and structures.
+*/
 ////////////////////////////////////////////////////////////////////////////////
 #ifndef BLIST_H
 #define BLIST_H
@@ -105,7 +115,7 @@ class BList
     {
       BNode *next;    //!< pointer to next BNode
       BNode *prev;    //!< pointer to previous BNode
-      int count;      //!< number of items currently in the node
+      unsigned int count;      //!< number of items currently in the node
       T values[Size]; //!< array of items in the node
 
       //!< Default constructor
@@ -146,7 +156,35 @@ class BList
     BNode *tail_; //!< points to the last node
 
     // Other private data and methods you may need ...
-
+    BListStats stats_;  //!< statistics about the BList
+    /**
+    * @brief Inserts an element into the specified node at the specified index.
+    * 
+    * @tparam T Type of elements stored in the BList.
+    * @tparam Size Maximum number of elements in each node.
+    * @param node Pointer to the node to insert the element into.
+    * @param value The value to be inserted into the node.
+    * @param index The index to insert the value at.
+    */
+    void insertNode(BNode *node, const T& value, int index);
+    /**
+     * @brief Copies the elements from one array to another.
+     * 
+     * @tparam T Type of elements stored in the BList.
+     * @tparam Size Maximum number of elements in each node.
+     * @param src Pointer to the source array.
+     * @param dest Pointer to the destination array.
+     * @param count Number of elements to copy.
+     */
+    void copyList(T* src, T* dest, const unsigned int count);
+    /**
+    * @brief Splits the specified node into two nodes.
+    * 
+    * @tparam T Type of elements stored in the BList.
+    * @tparam Size Maximum number of elements in each node.
+    * @param node Pointer to the node to be split.
+    */
+    void splitNode(BNode *node);
 };
 
 #include "BList.cpp"

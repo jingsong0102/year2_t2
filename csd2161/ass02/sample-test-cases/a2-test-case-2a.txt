@@ -1,0 +1,85 @@
+Test case 1:
+
+run server.exe
+run one client (client1)
+run another client (client2)
+
+You can see the following on server console:
+Client IP Address: 192.168.0.98
+Client Port Number: 58229
+Thread [13656] is executing a task.
+
+Client IP Address: 192.168.0.98
+Client Port Number: 58242
+Thread [12384] is executing a task.
+
+on client1: type in /l 
+you can see the print out on client1's console:
+==========RECV START==========
+Users:
+192.168.0.98:58229
+192.168.0.98:58242
+==========RECV END==========
+
+on client2: type in /l
+you can see the print out on client2's console:
+==========RECV START==========
+Users:
+192.168.0.98:58229
+192.168.0.98:58242
+==========RECV END==========
+
+There should be 2 users in this case
+
+
+on client1: type in /e 192.168.0.98:58242 hello world
+You can see the following on server console:
+==========RECV START==========
+192.168.0.98:58242
+hello worldE
+==========RECV END==========
+
+You can see the following on client2 console:
+==========RECV START==========
+192.168.0.98:58229
+hello world
+==========RECV END==========
+
+You can see the following on client1 console:
+/e 192.168.0.98:58242 hello world
+==========RECV START==========
+192.168.0.98:58242
+hello world
+==========RECV END==========
+
+
+on client1: type in /q 
+You can see the following on client1 console:
+disconnection...
+
+You can see the following on server console:
+Thread [13656] is waiting for a task.
+
+on client2: type in /l 
+You don't see any message print out on server console.
+
+You can see the following on client2 console:
+==========RECV START==========
+Users:
+192.168.0.98:58242
+==========RECV END==========
+
+on client2: type in /e 192.168.0.98:58229 hello world
+You can see the following on client2 console:
+==========RECV START==========
+Echo error
+==========RECV END==========
+
+You don't see any message print out on server console.
+
+on client2: type in /q 
+You can see the following on client2 console:
+disconnection...
+
+You can see the following on server console:
+Thread [12384] is waiting for a task.

@@ -1,3 +1,13 @@
+/*!
+@file EnvironmentMap.frag.glsl
+@author Vadim Surov (vsurov@digipen.edu)
+@co-author Wei Jingsong (jingsong.wei@digipen.edu)
+@course csd2151
+@section A
+@assignent #5.2
+@date 02/13/2024
+@brief This is the vertex shader file for Environment Map assignment.
+*/
 R"(
 #version 330 core
 

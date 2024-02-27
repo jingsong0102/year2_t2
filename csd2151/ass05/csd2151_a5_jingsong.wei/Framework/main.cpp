@@ -1,12 +1,14 @@
 /*!
 @file main.cpp
 @author Vadim Surov (vsurov@digipen.edu)
-@co-author <Your Name> (Your DP Email)
-@course
-@section
-@assignent #
-@date 1/7/2024
-@brief
+@co-author Wei Jingsong (jingsong.wei@digipen.edu)
+@course csd2151
+@section A
+@assignent #5.2
+@date 02/13/2024
+@brief The Environment Mapping assignment. This app utilizes
+a multi-pass mesh rendering process with vertex and fragment
+shaders that implement cube mapping, refraction and reflection.
 */
 #include <iostream>
 
@@ -28,18 +30,29 @@ bool mode_alt = false;
 */
 void keyCallback(GLFWwindow *pWindow, int key, int scancode, int action, int mods)
 {
+    mode_alt = (mods == GLFW_MOD_ALT);
     if (action == GLFW_PRESS)
     {
         if (key == GLFW_KEY_ESCAPE)
             glfwSetWindowShouldClose(pWindow, GL_TRUE);
-        // else if (key == GLFW_KEY_0) {
-             //pScene->passes[1].objects[0].material.params["material.reflectionFactor"] = { 0.f };
-        //     // Apply the updated material properties
-        //     pScene->passes[1].objects[0].material.setUniforms(&(pScene->shader));
-        // }
+
+        else if (key >= GLFW_KEY_0 && key <= GLFW_KEY_9)
+        {
+            int value = key - GLFW_KEY_0;
+            for (int n = 0; n < pScene->passes[1].objects.size(); ++n)
+            {
+                if (mode_alt)
+                {
+                    pScene->passes[1].objects[n].material.params["material.eta"] = {0.9f + value / 90.0f};
+                }
+                else
+                {
+                    pScene->passes[1].objects[n].material.params["material.reflectionFactor"] = {value / 9.0f};
+                }
+            }
+        }
     }
 }
-
 /*
    This function serves as the callback parameter for
       glfwSetMouseButtonCallback function used in the main function
@@ -104,6 +117,7 @@ void sizeCallback(GLFWwindow *pWindow, int width, int height)
     screen.y = static_cast<float>(height);
 
     pScene->passes[0].resize(static_cast<int>(screen.x), static_cast<int>(screen.y));
+    pScene->passes[1].resize(static_cast<int>(screen.x), static_cast<int>(screen.y));
 }
 
 /*
@@ -123,7 +137,7 @@ int main(int argc, char **argv)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
 
-    GLFWwindow *pWindow = glfwCreateWindow(WIDTH, HEIGHT, "Framework", NULL, NULL);
+    GLFWwindow *pWindow = glfwCreateWindow(WIDTH, HEIGHT, "EnvironmentMapAssignment", NULL, NULL);
     if (!pWindow)
     {
         std::cerr << "Unable to create OpenGL context." << std::endl;
@@ -151,7 +165,16 @@ int main(int argc, char **argv)
 #endif
 
     std::cout << std::endl;
-    std::cout << "A computer graphics framework." << std::endl;
+    std::cout << "The Environment Mapping Assignment demo." << std::endl;
+    std::cout << "Description:" << std::endl;
+    std::cout << "   This app utilizes a multi-pass mesh rendering process with vertex" << std::endl;
+    std::cout << "   and fragment shaders that implement cube mapping, refraction and reflection." << std::endl;
+    std::cout << "Interactions:" << std::endl;
+    std::cout << "   - Keys 0 to 9 to change the reflection factor." << std::endl;
+    std::cout << "   - Alt and keys 0 to 9 to change the ratio of indices of refraction." << std::endl;
+    std::cout << "   - The orbiting around the object is controlled by the mouse left button and wheel." << std::endl;
+    std::cout << "   - The screen is resizable." << std::endl;
+    std::cout << "   - You can press key Esc to close the app." << std::endl;
     std::cout << std::endl;
 
 #if defined(_DEBUG)
@@ -184,45 +207,39 @@ int main(int argc, char **argv)
                 // Passes
                 {
                     // Pass 0 (to render background)
-               {
+                    {
                         // Rendering target
                         DEFAULT,
 
                         // Viewport
-                        { 0, 0, WIDTH, HEIGHT },
+                        {0, 0, WIDTH, HEIGHT},
 
                         // Color to clear buffers
-                        { },
+                        {},
 
                         // Depth test
                         ENABLE,
 
                         // Objects
                         {
-                            {
-                               SKYBOX
-                            }
+                            {SKYBOX}},
+
+                        // The camera
+                        {
+                            {{0.0f, 0.0f, 3.0f}}},
+
+                        // Lights
+                        {
+
                         },
 
-            // The camera
-            {
-                { { 0.0f, 0.0f, 3.0f } }
-            },
+                        // Textures
+                        {
 
-            // Lights
-            {
+                        },
 
-            },
-
-            // Textures
-            {
-
-            },
-
-            // Setup uniforms in the shader
-            NULL
-        },
-
+                        // Setup uniforms in the shader
+                        NULL},
 
                     // Pass 1 (to render the object)
                     {
@@ -247,8 +264,7 @@ int main(int argc, char **argv)
                              glm::translate(glm::mat4(1.0f), {3.5f, 0.0f, 0.f})},
                             {TORUS,
                              MATERIAL_REFLECT_REFRACT,
-                             glm::translate(glm::mat4(1.0f), {-3.5f, 0.0f, 0.f})
-                             }},
+                             glm::translate(glm::mat4(1.0f), {-3.5f, 0.0f, 0.f})}},
                         // The camera
                         {
                             {{0.0f, 0.0f, 3.0f}}},

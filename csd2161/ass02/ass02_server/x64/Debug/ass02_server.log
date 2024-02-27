@@ -1,0 +1,3 @@
+﻿  ServerNonBlocking.cpp
+C:\Year2\t2\csd2161\ass02\ass02_server\ServerNonBlocking.cpp(297,21): warning C4244: 'argument': conversion from 'unsigned long' to 'u_short', possible loss of data
+  ass02_server.vcxproj -> C:\Year2\t2\csd2161\ass02\ass02_server\x64\Debug\ass02_server.exe
