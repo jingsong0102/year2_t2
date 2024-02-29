@@ -17,8 +17,12 @@
 
 #include <iostream>			// cout, cerr
 #include <string>			// string
-
+#include <mutex>			// mutex
+#include <map>
 #include "taskqueue.h"
+
+std::map<std::string, SOCKET> clientsMap;
+std::mutex clientsMapMutex;
 
 bool execute(SOCKET clientSocket);
 void disconnect(SOCKET& listenerSocket);
@@ -183,6 +187,13 @@ int main()
 			std::cout << std::endl;
 			std::cout << "Client IP Address: " << client_ipStr << std::endl;
 			std::cout << "Client Port number: " << ntohs(sockaddr_ipv4->sin_port) << std::endl;
+			
+			std::string clientID = std::string(client_ipStr) + ":" + std::to_string(ntohs(sockaddr_ipv4->sin_port));
+			{
+				std::lock_guard<std::mutex> lock(clientsMapMutex);
+				clientsMap[clientID] = clientSocket;
+			}
+
 			tq.produce(clientSocket);
 		}
 	}
@@ -204,6 +215,10 @@ void disconnect(SOCKET& listenerSocket)
 		closesocket(listenerSocket);
 		listenerSocket = INVALID_SOCKET;
 	}
+	{
+		std::lock_guard<std::mutex> lock(clientsMapMutex);
+		clientsMap.clear();
+	}
 }
 
 bool execute(SOCKET clientSocket)
@@ -216,7 +231,7 @@ bool execute(SOCKET clientSocket)
 	// send()
 	// -------------------------------------------------------------------------
 
-	constexpr size_t BUFFER_SIZE = 1000;
+	constexpr size_t BUFFER_SIZE = 12;
 	char buffer[BUFFER_SIZE];
 	bool stay = true;
 
@@ -240,8 +255,6 @@ bool execute(SOCKET clientSocket)
 				using namespace std::chrono_literals;
 				std::this_thread::sleep_for(200ms);
 				
-				/*std::lock_guard<std::mutex> usersLock{ _stdoutMutex };
-				std::cerr << "trying again..." << std::endl;*/
 				continue;
 			}
 			std::lock_guard<std::mutex> usersLock{ _stdoutMutex };		
@@ -252,16 +265,20 @@ bool execute(SOCKET clientSocket)
 		{
 			std::lock_guard<std::mutex> usersLock{ _stdoutMutex };
 			std::cerr << "Graceful shutdown." << std::endl;
+			std::lock_guard<std::mutex> lock(clientsMapMutex);
+			for (auto& client : clientsMap)
+			{
+				if (client.second == clientSocket)
+				{
+					clientsMap.erase(client.first);
+					break;
+				}
+			}
 			break;
 		}
 
 		buffer[bytesReceived] = '\0';
 		std::string text(buffer, bytesReceived);
-		//std::lock_guard<std::mutex> usersLock{ _stdoutMutex };
-		//std::cout
-		//	<< "Text received:  " << text << "\n"
-		//	<< "Bytes received: " << bytesReceived << "\n"
-		//	<< std::endl;
 
 
 
@@ -278,7 +295,21 @@ bool execute(SOCKET clientSocket)
 		//	awaitingClient = true;
 		//	continue;
 		//}
+		//listusers
+		if (commandId == REQ_LISTUSERS)
+		{
+			std::lock_guard<std::mutex> usersLock{ _stdoutMutex };
+			std::cout << "List of users" << std::endl;
+			std::lock_guard<std::mutex> lock(clientsMapMutex);
+			for (auto& client : clientsMap)
+			{
+				std::cout << client.first << std::endl;
+			}
+			std::cout <<"numeber of users"<< std::endl;
+			std::cout << clientsMap.size() << std::endl;
 
+			continue;
+		}
 		//echo
 		if (commandId == REQ_ECHO)
 		{
@@ -286,88 +317,89 @@ bool execute(SOCKET clientSocket)
 			unsigned long netOrder;
 			memcpy(&netOrder, buffer + 7, 4);
 			hostLength = ntohl(netOrder);
-
+			//if message length is invalid
+			if (static_cast<int>(hostLength) <= 0)
+			{
+				std::lock_guard<std::mutex> usersLock{ _stdoutMutex };
+				std::cerr << "Error invalid message length" << std::endl;
+				closesocket(clientSocket);
+				break;
+			}
+			//get destination ip and port
 			memcpy(&netOrder, buffer + 1, 4);
 			in_addr addr;
 			addr.s_addr = netOrder;
 			char des_ipStr[INET_ADDRSTRLEN];
 			inet_ntop(AF_INET, &addr, des_ipStr, INET_ADDRSTRLEN);
-
 			memcpy(&netOrder, buffer + 5, 2);
-			des_port = ntohs(netOrder);
-
-			std::lock_guard<std::mutex> usersLock{ _stdoutMutex };
-			std::cout << des_ipStr <<" "<< des_port << std::endl;
+			des_port = ntohs(static_cast<unsigned short>(netOrder));
 			
-			//if message length is invalid
-			if (static_cast<int>(hostLength) <= 0)
-			{
-				std::lock_guard<std::mutex> usersLock{ _stdoutMutex };
-				std::cout << "Error invalid message length" << std::endl;
-				closesocket(clientSocket);
-				break;
-			}
-			////if message is longer than buffer size
-			//if (BUFFER_SIZE < hostLength + 5)
-			//{
-			//	std::string message(buffer + 5, bytesReceived - 5);
-			//	std::cout << "[Echo Msg received] " << message;
-			//	const int bytesSent = send(clientSocket, buffer, bytesReceived, 0);
-			//	if (bytesSent == SOCKET_ERROR)
-			//	{
-			//		closesocket(clientSocket);
-			//		awaitingClient = true;
-			//		continue;
-			//	}
-			//	unsigned long totalBytesReceived = bytesReceived - 5;
-			//	while (totalBytesReceived < hostLength)
-			//		//loop until all bytes are received
-			//	{
-			//		char remainingBytes[BUFFER_SIZE];
-			//		const int addbytesReceived = recv(clientSocket, remainingBytes, BUFFER_SIZE, 0);
-			//		if (addbytesReceived == 0)
-			//		{
-			//			closesocket(clientSocket);
-			//			awaitingClient = true;
-			//			break;
-			//		}
-			//		if (addbytesReceived == SOCKET_ERROR)
-			//		{
-			//			closesocket(clientSocket);
-			//			awaitingClient = true;
-			//			break;
-			//		}
-			//		std::string message(remainingBytes, addbytesReceived);
-			//		std::cout << message;
-			//		totalBytesReceived += addbytesReceived;
+			char message[BUFFER_SIZE]{};
 
-			//		const int bytesSent = send(clientSocket, remainingBytes, addbytesReceived, 0);
-			//		if (bytesSent == SOCKET_ERROR)
-			//		{
-			//			closesocket(clientSocket);
-			//			awaitingClient = true;
-			//			break;
-			//		}
-			//	}
-			//	std::cout << std::endl;
-			//}
-			//else //if message is shorter than buffer size
-			//{
-				std::string message(buffer + 11, bytesReceived - 11);
-				std::cout << "[Echo Msg received] " << message << std::endl;
-
-				const int bytesSent = send(clientSocket, buffer, bytesReceived, 0);
-				if (bytesSent == SOCKET_ERROR)
-				{
+			//check if destination client exists
+			std::lock_guard<std::mutex> lock(clientsMapMutex);
+			std::string des_client = std::string(des_ipStr) + ":" + std::to_string(des_port);
+			auto it = clientsMap.find(des_client);
+			if (it == clientsMap.end()) {
+				// Client not found
+				message[0] = ECHO_ERROR;
+				const int bytesSent = send(clientSocket, message, 1, 0);
+				if (bytesSent == SOCKET_ERROR) {
+					// Handle send error
 					closesocket(clientSocket);
 					break;
 				}
+				continue;
+			}
+			//SOCKET clientSocket = it->second;
+			//int bytesSent = send(clientSocket, message.c_str(), message.length(), 0);
+			//if (bytesSent == SOCKET_ERROR) {
+			//	// Handle send error
+			//	return false;
 			//}
+
+			std::lock_guard<std::mutex> usersLock{ _stdoutMutex };
+			std::cout << "==========RECV START==========" << std::endl;
+			std::cout<< des_client << std::endl;
+
+			//if message is longer than buffer size
+			std::string text(buffer + 11, bytesReceived - 11);
+			std::cout << text << std::endl;
+			if (BUFFER_SIZE - 1 < hostLength + 11)
+			{
+				unsigned long totalBytesReceived = bytesReceived - 11;
+				while (totalBytesReceived < hostLength)
+				{
+					char remainingBytes[BUFFER_SIZE];
+					const int addbytesReceived = recv(
+						clientSocket,
+						remainingBytes,
+						BUFFER_SIZE,
+						0);
+					if (addbytesReceived == SOCKET_ERROR)
+					{
+						closesocket(clientSocket);
+						std::cerr << "recv() failed." << std::endl;
+						break;
+					}
+					if (addbytesReceived == 0)
+					{
+						std::cerr << "Graceful shutdown." << std::endl;
+						closesocket(clientSocket);
+						break;
+					}
+					std::string message(remainingBytes, addbytesReceived);
+					std::cout << message;
+					totalBytesReceived += addbytesReceived;
+				}
+				std::cout << std::endl;
+			}
+			std::cout << "==========RECV END==========" << std::endl;
 		}
 		else
 		{
 			std::lock_guard<std::mutex> usersLock{ _stdoutMutex };
-			std::cout << "Error invalid command" << std::endl;
+			std::cerr << "Error invalid command" << std::endl;
 			closesocket(clientSocket);
 			break;
 		}
