@@ -182,7 +182,10 @@ int main()
 			}
 			char client_ipStr[INET_ADDRSTRLEN];
 			sockaddr_in* sockaddr_ipv4 = reinterpret_cast<sockaddr_in*>(&clientAddress);
-			inet_ntop(AF_INET, &sockaddr_ipv4->sin_addr, client_ipStr, sizeof(client_ipStr));
+			if (inet_ntop(AF_INET, &sockaddr_ipv4->sin_addr, client_ipStr, sizeof(client_ipStr)) == nullptr) {
+				std::cerr << "Failed to convert IP address" << std::endl;
+				break;
+			}
 			std::lock_guard<std::mutex> usersLock{ _stdoutMutex };
 			std::cout << std::endl;
 			std::cout << "Client IP Address: " << client_ipStr << std::endl;
@@ -278,11 +281,6 @@ bool execute(SOCKET clientSocket)
 		}
 
 		buffer[bytesReceived] = '\0';
-		std::string text(buffer, bytesReceived);
-
-
-
-
 		unsigned long hostLength{};
 		unsigned char commandId = buffer[0];
 		unsigned long des_ip{};
@@ -311,7 +309,7 @@ bool execute(SOCKET clientSocket)
 			continue;
 		}
 		//echo
-		if (commandId == REQ_ECHO)
+		else if (commandId == REQ_ECHO)
 		{
 			//get text message length
 			unsigned long netOrder;
@@ -330,18 +328,20 @@ bool execute(SOCKET clientSocket)
 			in_addr addr;
 			addr.s_addr = netOrder;
 			char des_ipStr[INET_ADDRSTRLEN];
-			inet_ntop(AF_INET, &addr, des_ipStr, INET_ADDRSTRLEN);
+			if (inet_ntop(AF_INET, &addr, des_ipStr, INET_ADDRSTRLEN) == nullptr) {
+				std::cerr << "Failed to convert IP address" << std::endl;
+				break;
+			}
 			memcpy(&netOrder, buffer + 5, 2);
 			des_port = ntohs(static_cast<unsigned short>(netOrder));
 			
-			char message[BUFFER_SIZE]{};
-
 			//check if destination client exists
 			std::lock_guard<std::mutex> lock(clientsMapMutex);
 			std::string des_client = std::string(des_ipStr) + ":" + std::to_string(des_port);
 			auto it = clientsMap.find(des_client);
 			if (it == clientsMap.end()) {
 				// Client not found
+				char message[1]{};
 				message[0] = ECHO_ERROR;
 				const int bytesSent = send(clientSocket, message, 1, 0);
 				if (bytesSent == SOCKET_ERROR) {
@@ -351,22 +351,41 @@ bool execute(SOCKET clientSocket)
 				}
 				continue;
 			}
-			//SOCKET clientSocket = it->second;
-			//int bytesSent = send(clientSocket, message.c_str(), message.length(), 0);
-			//if (bytesSent == SOCKET_ERROR) {
-			//	// Handle send error
-			//	return false;
-			//}
+			SOCKET des_clientSocket = it->second;
+			//construct source client address
+			sockaddr_in clientAddr;
+			int addrSize = sizeof(clientAddr);
+			unsigned long netSrcAddr{};
+			if (getpeername(clientSocket, reinterpret_cast<sockaddr*>(&clientAddr), &addrSize) == 0) {
+				netSrcAddr = clientAddr.sin_addr.s_addr;
+			}
+			else
+			{
+				std::cerr << "getpeername() failed." << std::endl;
+				break;
+			}
+			unsigned short netSrcPort = clientAddr.sin_port;
 
+			//print des message on server
 			std::lock_guard<std::mutex> usersLock{ _stdoutMutex };
 			std::cout << "==========RECV START==========" << std::endl;
 			std::cout<< des_client << std::endl;
 
 			//if message is longer than buffer size
 			std::string text(buffer + 11, bytesReceived - 11);
-			std::cout << text << std::endl;
 			if (BUFFER_SIZE - 1 < hostLength + 11)
 			{
+				std::cout << text;
+				//construct message
+				memcpy(buffer + 1, &netSrcAddr, 4);
+				memcpy(buffer + 5, &netSrcPort, 2);
+				//send message to destination client
+				const int bytesSent = send(des_clientSocket, buffer, bytesReceived, 0);
+				if (bytesSent == SOCKET_ERROR) {
+					closesocket(clientSocket);
+					std::cerr << "send() failed." << std::endl;
+					break;
+				}
 				unsigned long totalBytesReceived = bytesReceived - 11;
 				while (totalBytesReceived < hostLength)
 				{
@@ -391,15 +410,150 @@ bool execute(SOCKET clientSocket)
 					std::string message(remainingBytes, addbytesReceived);
 					std::cout << message;
 					totalBytesReceived += addbytesReceived;
+					//sned to des client
+					const int bytesSent = send(des_clientSocket, remainingBytes, addbytesReceived, 0);
+					if (bytesSent == SOCKET_ERROR) {
+						closesocket(clientSocket);
+						std::cerr << "send() failed." << std::endl;
+						break;
+					}
 				}
 				std::cout << std::endl;
 			}
+			else
+			{
+				std::cout << text << std::endl;
+				//construct message
+				memcpy(buffer + 1, &netSrcAddr, 4);
+				memcpy(buffer + 5, &netSrcPort, 2);
+				//send message to destination client
+				const int bytesSent = send(des_clientSocket, buffer, bytesReceived, 0);
+				if (bytesSent == SOCKET_ERROR) {
+					closesocket(clientSocket);
+					std::cerr << "send() failed." << std::endl;
+					break;
+				}
+			}
 			std::cout << "==========RECV END==========" << std::endl;
+		}
+		else if (commandId == RSP_ECHO) {
+			//get text message length
+			unsigned long netOrder;
+			memcpy(&netOrder, buffer + 7, 4);
+			hostLength = ntohl(netOrder);
+			//if message length is invalid
+			if (static_cast<int>(hostLength) <= 0)
+			{
+				std::lock_guard<std::mutex> usersLock{ _stdoutMutex };
+				std::cerr << "Error invalid message length" << std::endl;
+				closesocket(clientSocket);
+				break;
+			}
+			//get destination ip and port
+			memcpy(&netOrder, buffer + 1, 4);
+			in_addr addr;
+			addr.s_addr = netOrder;
+			char des_ipStr[INET_ADDRSTRLEN];
+			if (inet_ntop(AF_INET, &addr, des_ipStr, INET_ADDRSTRLEN) == nullptr) {
+				std::cerr << "Failed to convert IP address" << std::endl;
+				break;
+			}
+			memcpy(&netOrder, buffer + 5, 2);
+			des_port = ntohs(static_cast<unsigned short>(netOrder));
+			//check if destination client exists
+			std::lock_guard<std::mutex> lock(clientsMapMutex);
+			std::string des_client = std::string(des_ipStr) + ":" + std::to_string(des_port);
+			auto it = clientsMap.find(des_client);
+			if (it == clientsMap.end()) {
+				// Client not found
+				char message[1]{};
+				message[0] = ECHO_ERROR;
+				const int bytesSent = send(clientSocket, message, 1, 0);
+				if (bytesSent == SOCKET_ERROR) {
+					// Handle send error
+					closesocket(clientSocket);
+					break;
+				}
+				continue;
+			}
+			SOCKET des_clientSocket = it->second;
+			//construct source client address
+			sockaddr_in clientAddr;
+			int addrSize = sizeof(clientAddr);
+			unsigned long netSrcAddr{};
+			if (getpeername(clientSocket, reinterpret_cast<sockaddr*>(&clientAddr), &addrSize) == 0) {
+				netSrcAddr = clientAddr.sin_addr.s_addr;
+			}
+			else
+			{
+				std::cerr << "getpeername() failed." << std::endl;
+				break;
+			}
+			unsigned short netSrcPort = clientAddr.sin_port;
+			//if message is longer than buffer size
+			std::string text(buffer + 11, bytesReceived - 11);
+			if (BUFFER_SIZE - 1 < hostLength + 11)
+			{
+				//construct message
+				memcpy(buffer + 1, &netSrcAddr, 4);
+				memcpy(buffer + 5, &netSrcPort, 2);
+				//send message to destination client
+				const int bytesSent = send(des_clientSocket, buffer, bytesReceived, 0);
+				if (bytesSent == SOCKET_ERROR) {
+					closesocket(clientSocket);
+					std::cerr << "send() failed." << std::endl;
+					break;
+				}
+				unsigned long totalBytesReceived = bytesReceived - 11;
+				while (totalBytesReceived < hostLength)
+				{
+					char remainingBytes[BUFFER_SIZE];
+					const int addbytesReceived = recv(
+						clientSocket,
+						remainingBytes,
+						BUFFER_SIZE,
+						0);
+					if (addbytesReceived == SOCKET_ERROR)
+					{
+						closesocket(clientSocket);
+						std::cerr << "recv() failed." << std::endl;
+						break;
+					}
+					if (addbytesReceived == 0)
+					{
+						std::cerr << "Graceful shutdown." << std::endl;
+						closesocket(clientSocket);
+						break;
+					}
+					totalBytesReceived += addbytesReceived;
+					//sned to des client
+					const int bytesSent = send(des_clientSocket, remainingBytes, addbytesReceived, 0);
+					if (bytesSent == SOCKET_ERROR) {
+						closesocket(clientSocket);
+						std::cerr << "send() failed." << std::endl;
+						break;
+					}
+				}
+			}
+			else
+			{
+				//construct message
+				memcpy(buffer + 1, &netSrcAddr, 4);
+				memcpy(buffer + 5, &netSrcPort, 2);
+				//send message to destination client
+				const int bytesSent = send(des_clientSocket, buffer, bytesReceived, 0);
+				if (bytesSent == SOCKET_ERROR) {
+					closesocket(clientSocket);
+					std::cerr << "send() failed." << std::endl;
+					break;
+				}
+			}
 		}
 		else
 		{
 			std::lock_guard<std::mutex> usersLock{ _stdoutMutex };
 			std::cerr << "Error invalid command" << std::endl;
+			std::cout<< "commandId: " << std::to_string(commandId) << std::endl;
 			closesocket(clientSocket);
 			break;
 		}
@@ -407,13 +561,13 @@ bool execute(SOCKET clientSocket)
 
 
 
-		if (text == "*")
-		{
-			std::lock_guard<std::mutex> usersLock{ _stdoutMutex };
-			std::cout << "Requested to close the server!" << std::endl;
-			stay = false;
-			break;
-		}
+		//if (text == "*")
+		//{
+		//	std::lock_guard<std::mutex> usersLock{ _stdoutMutex };
+		//	std::cout << "Requested to close the server!" << std::endl;
+		//	stay = false;
+		//	break;
+		//}
 
 		//const int bytesSent = send(clientSocket, buffer, bytesReceived, 0);
 		//if (bytesSent == SOCKET_ERROR)
@@ -436,3 +590,7 @@ bool execute(SOCKET clientSocket)
 	closesocket(clientSocket);
 	return stay;
 }
+
+
+
+
