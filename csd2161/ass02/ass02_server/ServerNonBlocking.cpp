@@ -36,10 +36,20 @@ enum CMDID {
 	CMD_TEST = (unsigned char)0x20,
 	ECHO_ERROR = (unsigned char)0x30
 };
-
+void removeClient(SOCKET clientSocket) {
+	std::lock_guard<std::mutex> lock(clientsMapMutex);
+	for (auto& client : clientsMap)
+	{
+		if (client.second == clientSocket)
+		{
+			clientsMap.erase(client.first);
+			break;
+		}
+	}
+}
 int main()
 {
-	
+
 
 	// -------------------------------------------------------------------------
 	// Start up Winsock, asking for version 2.2.
@@ -166,7 +176,7 @@ int main()
 
 	{
 		const auto onDisconnect = [&]() { disconnect(listenerSocket); };
-		auto tq = TaskQueue<SOCKET, decltype(execute), decltype(onDisconnect)>{10, 20, execute, onDisconnect};
+		auto tq = TaskQueue<SOCKET, decltype(execute), decltype(onDisconnect)>{ 10, 20, execute, onDisconnect };
 		while (listenerSocket != INVALID_SOCKET)
 		{
 			sockaddr clientAddress{};
@@ -190,7 +200,7 @@ int main()
 			std::cout << std::endl;
 			std::cout << "Client IP Address: " << client_ipStr << std::endl;
 			std::cout << "Client Port number: " << ntohs(sockaddr_ipv4->sin_port) << std::endl;
-			
+
 			std::string clientID = std::string(client_ipStr) + ":" + std::to_string(ntohs(sockaddr_ipv4->sin_port));
 			{
 				std::lock_guard<std::mutex> lock(clientsMapMutex);
@@ -257,25 +267,18 @@ bool execute(SOCKET clientSocket)
 				// A non-blocking call returned no data; sleep and try again.
 				using namespace std::chrono_literals;
 				std::this_thread::sleep_for(200ms);
-				
 				continue;
 			}
+			removeClient(clientSocket);
+			closesocket(clientSocket);
 			break;
 		}
 		if (bytesReceived == 0)
 		{
 			std::lock_guard<std::mutex> usersLock{ _stdoutMutex };
 			std::cerr << "Graceful shutdown." << std::endl;
+			removeClient(clientSocket);
 			closesocket(clientSocket);
-			std::lock_guard<std::mutex> lock(clientsMapMutex);
-			for (auto& client : clientsMap)
-			{
-				if (client.second == clientSocket)
-				{
-					clientsMap.erase(client.first);
-					break;
-				}
-			}
 			break;
 		}
 		buffer[bytesReceived] = '\0';
@@ -286,6 +289,7 @@ bool execute(SOCKET clientSocket)
 		//quit
 		if (commandId == REQ_QUIT)
 		{
+			removeClient(clientSocket);
 			closesocket(clientSocket);
 			break;
 		}
@@ -322,6 +326,7 @@ bool execute(SOCKET clientSocket)
 					catch (std::invalid_argument& e)
 					{
 						(void)e;
+						removeClient(clientSocket);
 						closesocket(clientSocket);
 						break;
 					}
@@ -329,6 +334,7 @@ bool execute(SOCKET clientSocket)
 					memcpy(message + 7 + i * 6, &portUShort, 2);
 				}
 				else {
+					removeClient(clientSocket);
 					closesocket(clientSocket);
 					break;
 				}
@@ -337,6 +343,7 @@ bool execute(SOCKET clientSocket)
 			const int bytesSent = send(clientSocket, message, length, 0);
 			if (bytesSent == SOCKET_ERROR) {
 				// Handle send error
+				removeClient(clientSocket);
 				closesocket(clientSocket);
 				break;
 			}
@@ -353,6 +360,7 @@ bool execute(SOCKET clientSocket)
 			{
 				std::lock_guard<std::mutex> usersLock{ _stdoutMutex };
 				std::cerr << "Error invalid message length" << std::endl;
+				removeClient(clientSocket);
 				closesocket(clientSocket);
 				break;
 			}
@@ -366,7 +374,7 @@ bool execute(SOCKET clientSocket)
 			}
 			memcpy(&netOrder, buffer + 5, 2);
 			des_port = ntohs(static_cast<unsigned short>(netOrder));
-			
+
 			//check if destination client exists
 			std::lock_guard<std::mutex> lock(clientsMapMutex);
 			std::string des_client = std::string(des_ipStr) + ":" + std::to_string(des_port);
@@ -378,6 +386,7 @@ bool execute(SOCKET clientSocket)
 				const int bytesSent = send(clientSocket, message, 1, 0);
 				if (bytesSent == SOCKET_ERROR) {
 					// Handle send error
+					removeClient(clientSocket);
 					closesocket(clientSocket);
 					break;
 				}
@@ -393,6 +402,7 @@ bool execute(SOCKET clientSocket)
 			}
 			else
 			{
+				removeClient(clientSocket);
 				closesocket(clientSocket);
 				break;
 			}
@@ -401,7 +411,7 @@ bool execute(SOCKET clientSocket)
 			//print des message on server
 			std::lock_guard<std::mutex> usersLock{ _stdoutMutex };
 			std::cout << "==========RECV START==========" << std::endl;
-			std::cout<< des_client << std::endl;
+			std::cout << des_client << std::endl;
 
 			//if message is longer than buffer size
 			std::string text(buffer + 11, bytesReceived - 11);
@@ -414,6 +424,7 @@ bool execute(SOCKET clientSocket)
 				//send message to destination client
 				const int bytesSent = send(des_clientSocket, buffer, bytesReceived, 0);
 				if (bytesSent == SOCKET_ERROR) {
+					removeClient(clientSocket);
 					closesocket(clientSocket);
 					break;
 				}
@@ -428,11 +439,13 @@ bool execute(SOCKET clientSocket)
 						0);
 					if (addbytesReceived == SOCKET_ERROR)
 					{
+						removeClient(clientSocket);
 						closesocket(clientSocket);
 						break;
 					}
 					if (addbytesReceived == 0)
 					{
+						removeClient(clientSocket);
 						closesocket(clientSocket);
 						break;
 					}
@@ -442,6 +455,7 @@ bool execute(SOCKET clientSocket)
 					//sned to des client
 					const int bytesSent = send(des_clientSocket, remainingBytes, addbytesReceived, 0);
 					if (bytesSent == SOCKET_ERROR) {
+						removeClient(clientSocket);
 						closesocket(clientSocket);
 						break;
 					}
@@ -457,6 +471,7 @@ bool execute(SOCKET clientSocket)
 				//send message to destination client
 				const int bytesSent = send(des_clientSocket, buffer, bytesReceived, 0);
 				if (bytesSent == SOCKET_ERROR) {
+					removeClient(clientSocket);
 					closesocket(clientSocket);
 					break;
 				}
@@ -473,6 +488,7 @@ bool execute(SOCKET clientSocket)
 			{
 				std::lock_guard<std::mutex> usersLock{ _stdoutMutex };
 				std::cerr << "Error invalid message length" << std::endl;
+				removeClient(clientSocket);
 				closesocket(clientSocket);
 				break;
 			}
@@ -497,6 +513,7 @@ bool execute(SOCKET clientSocket)
 				const int bytesSent = send(clientSocket, message, 1, 0);
 				if (bytesSent == SOCKET_ERROR) {
 					// Handle send error
+					removeClient(clientSocket);
 					closesocket(clientSocket);
 					break;
 				}
@@ -512,6 +529,7 @@ bool execute(SOCKET clientSocket)
 			}
 			else
 			{
+				removeClient(clientSocket);
 				closesocket(clientSocket);
 				break;
 			}
@@ -526,6 +544,7 @@ bool execute(SOCKET clientSocket)
 				//send message to destination client
 				const int bytesSent = send(des_clientSocket, buffer, bytesReceived, 0);
 				if (bytesSent == SOCKET_ERROR) {
+					removeClient(clientSocket);
 					closesocket(clientSocket);
 					break;
 				}
@@ -540,11 +559,13 @@ bool execute(SOCKET clientSocket)
 						0);
 					if (addbytesReceived == SOCKET_ERROR)
 					{
+						removeClient(clientSocket);
 						closesocket(clientSocket);
 						break;
 					}
 					if (addbytesReceived == 0)
 					{
+						removeClient(clientSocket);
 						closesocket(clientSocket);
 						break;
 					}
@@ -552,6 +573,7 @@ bool execute(SOCKET clientSocket)
 					//sned to des client
 					const int bytesSent = send(des_clientSocket, remainingBytes, addbytesReceived, 0);
 					if (bytesSent == SOCKET_ERROR) {
+						removeClient(clientSocket);
 						closesocket(clientSocket);
 						break;
 					}
@@ -565,37 +587,18 @@ bool execute(SOCKET clientSocket)
 				//send message to destination client
 				const int bytesSent = send(des_clientSocket, buffer, bytesReceived, 0);
 				if (bytesSent == SOCKET_ERROR) {
+					removeClient(clientSocket);
 					closesocket(clientSocket);
 					break;
 				}
 			}
 		}
-		else
+		else //undefined command
 		{
-			std::lock_guard<std::mutex> usersLock{ _stdoutMutex };
-			std::cerr << "Error invalid command" << std::endl;
+			removeClient(clientSocket);
 			closesocket(clientSocket);
 			break;
 		}
-
-
-
-
-		//if (text == "*")
-		//{
-		//	std::lock_guard<std::mutex> usersLock{ _stdoutMutex };
-		//	std::cout << "Requested to close the server!" << std::endl;
-		//	stay = false;
-		//	break;
-		//}
-
-		//const int bytesSent = send(clientSocket, buffer, bytesReceived, 0);
-		//if (bytesSent == SOCKET_ERROR)
-		//{
-		//	std::lock_guard<std::mutex> usersLock{ _stdoutMutex };
-		//	std::cerr << "send() failed." << std::endl;
-		//	break;
-		//}
 	}
 
 
