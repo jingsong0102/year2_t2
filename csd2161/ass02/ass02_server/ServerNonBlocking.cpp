@@ -280,7 +280,6 @@ bool execute(SOCKET clientSocket)
 			}
 			break;
 		}
-
 		buffer[bytesReceived] = '\0';
 		unsigned long hostLength{};
 		unsigned char commandId = buffer[0];
@@ -293,19 +292,53 @@ bool execute(SOCKET clientSocket)
 			break;
 		}
 		//listusers
-		if (commandId == REQ_LISTUSERS)
+		else if (commandId == REQ_LISTUSERS)
 		{
-			std::lock_guard<std::mutex> usersLock{ _stdoutMutex };
-			std::cout << "List of users" << std::endl;
 			std::lock_guard<std::mutex> lock(clientsMapMutex);
+			unsigned short num_users = static_cast<unsigned short>(clientsMap.size());
+			int length = 3 + 6 * num_users;
+			num_users = htons(num_users);
+			char message[BUFFER_SIZE];
+			message[0] = RSP_LISTUSERS;
+			memcpy(message + 1, &num_users, 2);
 			for (auto& client : clientsMap)
 			{
-				std::cout << client.first << std::endl;
-			}
-			std::cout <<"numeber of users"<< std::endl;
-			std::cout << clientsMap.size() << std::endl;
+				std::string user = client.first;
+				size_t colonPos = user.find(':');
+				if (colonPos != std::string::npos) {
+					std::string ipStr = user.substr(0, colonPos);
+					std::string portStr = user.substr(colonPos + 1);
 
-			continue;
+					in_addr addr;
+					if (inet_pton(AF_INET, ipStr.c_str(), &addr) != 1) {
+						break;
+					}
+					unsigned long ipULong = addr.s_addr;
+					unsigned long portUShort{};
+					memcpy(message + 3, &ipULong, 4);
+					try
+					{
+						portUShort = std::stoul(portStr);
+					}
+					catch (std::invalid_argument& e)
+					{
+						std::cerr << "Invalid port number: " << e.what() << std::endl;
+						break;
+					}
+					portUShort = htons(static_cast<unsigned short>(portUShort));
+					memcpy(message + 7, &portUShort, 2);
+				}
+				else {
+					std::cerr << "Invalid IP:Port string format." << std::endl;
+					break;
+				}
+			}
+			const int bytesSent = send(clientSocket, message, length, 0);
+			if (bytesSent == SOCKET_ERROR) {
+				// Handle send error
+				closesocket(clientSocket);
+				break;
+			}
 		}
 		//echo
 		else if (commandId == REQ_ECHO)
@@ -552,7 +585,6 @@ bool execute(SOCKET clientSocket)
 		{
 			std::lock_guard<std::mutex> usersLock{ _stdoutMutex };
 			std::cerr << "Error invalid command" << std::endl;
-			std::cout<< "commandId: " << std::to_string(commandId) << std::endl;
 			closesocket(clientSocket);
 			break;
 		}
