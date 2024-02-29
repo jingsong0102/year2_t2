@@ -260,8 +260,6 @@ bool execute(SOCKET clientSocket)
 				
 				continue;
 			}
-			std::lock_guard<std::mutex> usersLock{ _stdoutMutex };		
-			std::cerr << "recv() failed." << std::endl;
 			break;
 		}
 		if (bytesReceived == 0)
@@ -295,12 +293,13 @@ bool execute(SOCKET clientSocket)
 		else if (commandId == REQ_LISTUSERS)
 		{
 			std::lock_guard<std::mutex> lock(clientsMapMutex);
-			unsigned short num_users = static_cast<unsigned short>(clientsMap.size());
+			int num_users = static_cast<int>(clientsMap.size());
 			int length = 3 + 6 * num_users;
-			num_users = htons(num_users);
-			char message[BUFFER_SIZE];
+			char message[BUFFER_SIZE]{};
 			message[0] = RSP_LISTUSERS;
-			memcpy(message + 1, &num_users, 2);
+			unsigned short net_num_users = htons(static_cast<unsigned short>(num_users));
+			memcpy(message + 1, &net_num_users, 2);
+			int i = 0;
 			for (auto& client : clientsMap)
 			{
 				std::string user = client.first;
@@ -315,23 +314,25 @@ bool execute(SOCKET clientSocket)
 					}
 					unsigned long ipULong = addr.s_addr;
 					unsigned long portUShort{};
-					memcpy(message + 3, &ipULong, 4);
+					memcpy(message + 3 + i * 6, &ipULong, 4);
 					try
 					{
 						portUShort = std::stoul(portStr);
 					}
 					catch (std::invalid_argument& e)
 					{
-						std::cerr << "Invalid port number: " << e.what() << std::endl;
+						(void)e;
+						closesocket(clientSocket);
 						break;
 					}
 					portUShort = htons(static_cast<unsigned short>(portUShort));
-					memcpy(message + 7, &portUShort, 2);
+					memcpy(message + 7 + i * 6, &portUShort, 2);
 				}
 				else {
-					std::cerr << "Invalid IP:Port string format." << std::endl;
+					closesocket(clientSocket);
 					break;
 				}
+				i++;
 			}
 			const int bytesSent = send(clientSocket, message, length, 0);
 			if (bytesSent == SOCKET_ERROR) {
@@ -361,7 +362,6 @@ bool execute(SOCKET clientSocket)
 			addr.s_addr = netOrder;
 			char des_ipStr[INET_ADDRSTRLEN];
 			if (inet_ntop(AF_INET, &addr, des_ipStr, INET_ADDRSTRLEN) == nullptr) {
-				std::cerr << "Failed to convert IP address" << std::endl;
 				break;
 			}
 			memcpy(&netOrder, buffer + 5, 2);
@@ -393,7 +393,7 @@ bool execute(SOCKET clientSocket)
 			}
 			else
 			{
-				std::cerr << "getpeername() failed." << std::endl;
+				closesocket(clientSocket);
 				break;
 			}
 			unsigned short netSrcPort = clientAddr.sin_port;
@@ -415,7 +415,6 @@ bool execute(SOCKET clientSocket)
 				const int bytesSent = send(des_clientSocket, buffer, bytesReceived, 0);
 				if (bytesSent == SOCKET_ERROR) {
 					closesocket(clientSocket);
-					std::cerr << "send() failed." << std::endl;
 					break;
 				}
 				unsigned long totalBytesReceived = bytesReceived - 11;
@@ -430,12 +429,10 @@ bool execute(SOCKET clientSocket)
 					if (addbytesReceived == SOCKET_ERROR)
 					{
 						closesocket(clientSocket);
-						std::cerr << "recv() failed." << std::endl;
 						break;
 					}
 					if (addbytesReceived == 0)
 					{
-						std::cerr << "Graceful shutdown." << std::endl;
 						closesocket(clientSocket);
 						break;
 					}
@@ -446,7 +443,6 @@ bool execute(SOCKET clientSocket)
 					const int bytesSent = send(des_clientSocket, remainingBytes, addbytesReceived, 0);
 					if (bytesSent == SOCKET_ERROR) {
 						closesocket(clientSocket);
-						std::cerr << "send() failed." << std::endl;
 						break;
 					}
 				}
@@ -462,7 +458,6 @@ bool execute(SOCKET clientSocket)
 				const int bytesSent = send(des_clientSocket, buffer, bytesReceived, 0);
 				if (bytesSent == SOCKET_ERROR) {
 					closesocket(clientSocket);
-					std::cerr << "send() failed." << std::endl;
 					break;
 				}
 			}
@@ -487,7 +482,6 @@ bool execute(SOCKET clientSocket)
 			addr.s_addr = netOrder;
 			char des_ipStr[INET_ADDRSTRLEN];
 			if (inet_ntop(AF_INET, &addr, des_ipStr, INET_ADDRSTRLEN) == nullptr) {
-				std::cerr << "Failed to convert IP address" << std::endl;
 				break;
 			}
 			memcpy(&netOrder, buffer + 5, 2);
@@ -518,7 +512,7 @@ bool execute(SOCKET clientSocket)
 			}
 			else
 			{
-				std::cerr << "getpeername() failed." << std::endl;
+				closesocket(clientSocket);
 				break;
 			}
 			unsigned short netSrcPort = clientAddr.sin_port;
@@ -533,7 +527,6 @@ bool execute(SOCKET clientSocket)
 				const int bytesSent = send(des_clientSocket, buffer, bytesReceived, 0);
 				if (bytesSent == SOCKET_ERROR) {
 					closesocket(clientSocket);
-					std::cerr << "send() failed." << std::endl;
 					break;
 				}
 				unsigned long totalBytesReceived = bytesReceived - 11;
@@ -548,12 +541,10 @@ bool execute(SOCKET clientSocket)
 					if (addbytesReceived == SOCKET_ERROR)
 					{
 						closesocket(clientSocket);
-						std::cerr << "recv() failed." << std::endl;
 						break;
 					}
 					if (addbytesReceived == 0)
 					{
-						std::cerr << "Graceful shutdown." << std::endl;
 						closesocket(clientSocket);
 						break;
 					}
@@ -562,7 +553,6 @@ bool execute(SOCKET clientSocket)
 					const int bytesSent = send(des_clientSocket, remainingBytes, addbytesReceived, 0);
 					if (bytesSent == SOCKET_ERROR) {
 						closesocket(clientSocket);
-						std::cerr << "send() failed." << std::endl;
 						break;
 					}
 				}
@@ -576,7 +566,6 @@ bool execute(SOCKET clientSocket)
 				const int bytesSent = send(des_clientSocket, buffer, bytesReceived, 0);
 				if (bytesSent == SOCKET_ERROR) {
 					closesocket(clientSocket);
-					std::cerr << "send() failed." << std::endl;
 					break;
 				}
 			}
