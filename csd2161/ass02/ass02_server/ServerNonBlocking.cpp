@@ -234,7 +234,7 @@ bool execute(SOCKET clientSocket)
 	// send()
 	// -------------------------------------------------------------------------
 
-	constexpr size_t BUFFER_SIZE = 12;
+	constexpr size_t BUFFER_SIZE = 1000;
 	char buffer[BUFFER_SIZE];
 	bool stay = true;
 
@@ -268,6 +268,7 @@ bool execute(SOCKET clientSocket)
 		{
 			std::lock_guard<std::mutex> usersLock{ _stdoutMutex };
 			std::cerr << "Graceful shutdown." << std::endl;
+			closesocket(clientSocket);
 			std::lock_guard<std::mutex> lock(clientsMapMutex);
 			for (auto& client : clientsMap)
 			{
@@ -286,13 +287,11 @@ bool execute(SOCKET clientSocket)
 		unsigned long des_ip{};
 		unsigned short des_port{};
 		//quit
-		//if (commandId == 0x01)
-		//{
-		//	std::cout << "Quit command received. Bye from " << client_ipStr << ":" << ntohs(sockaddr_ipv4->sin_port) << std::endl;
-		//	closesocket(clientSocket);
-		//	awaitingClient = true;
-		//	continue;
-		//}
+		if (commandId == REQ_QUIT)
+		{
+			closesocket(clientSocket);
+			break;
+		}
 		//listusers
 		if (commandId == REQ_LISTUSERS)
 		{
