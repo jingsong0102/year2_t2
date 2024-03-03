@@ -1,11 +1,11 @@
 /* Start Header
 *****************************************************************/
 /*!
-\file echoclient.cpp
+\file client.cpp
 \author Wei Jingsong
 \par jingsong.wei@digipen.edu
-\date Jan 23 2024
-\brief Basic Winsock Programming using TCP sockets. This is the
+\date March 3 2024
+\brief Multi-threading Winsock Programming using TCP sockets. This is the
 client code.
 
 Copyright (C) 20xx DigiPen Institute of Technology.
@@ -48,10 +48,11 @@ enum CMDID {
 	CMD_TEST = (unsigned char)0x20,
 	ECHO_ERROR = (unsigned char)0x30
 };
-constexpr size_t BUFFER_SIZE = 14;
+constexpr size_t BUFFER_SIZE = 1000;
 int textLength{};
 void processRecv(SOCKET clientSocket) {
 	while (true) {
+
 		char buffer[BUFFER_SIZE];
 		const int bytesReceived = recv(
 			clientSocket,
@@ -60,6 +61,14 @@ void processRecv(SOCKET clientSocket) {
 			0);
 		if (bytesReceived == SOCKET_ERROR)
 		{
+			size_t errorCode = WSAGetLastError();
+			if (errorCode == WSAEWOULDBLOCK)
+			{
+				// A non-blocking call returned no data; sleep and try again.
+				using namespace std::chrono_literals;
+				std::this_thread::sleep_for(200ms);
+				continue;
+			}
 			closesocket(clientSocket);
 			break;
 		}
@@ -108,7 +117,7 @@ void processRecv(SOCKET clientSocket) {
 			}
 			memcpy(&netOrder, buffer + 5, 2);
 			unsigned long src_port = netOrder;
-			std::cout << std::string(src_ipStr) + ":" + std::to_string(ntohs(src_port)) << std::endl;
+			std::cout << std::string(src_ipStr) + ":" + std::to_string(ntohs(static_cast<unsigned short>(src_port))) << std::endl;
 			//get message
 			std::string recvMessage(buffer + 11, bytesReceived - 11);
 			std::cout << recvMessage;
@@ -128,6 +137,10 @@ void processRecv(SOCKET clientSocket) {
 				rspEchoMessage,
 				static_cast<int>(bytesReceived),
 				0);
+#ifdef DEBUG_ASSIGNTMENT2_TEST
+			using namespace std::chrono_literals;
+			std::this_thread::sleep_for(5000ms);
+#endif
 			if (bytesSent == SOCKET_ERROR)
 			{
 				closesocket(clientSocket);
@@ -165,6 +178,10 @@ void processRecv(SOCKET clientSocket) {
 						buffer,
 						static_cast<int>(bytesReceived),
 						0);
+#ifdef DEBUG_ASSIGNTMENT2_TEST
+					using namespace std::chrono_literals;
+					std::this_thread::sleep_for(5000ms);
+#endif
 					if (bytesSent == SOCKET_ERROR)
 					{
 						closesocket(clientSocket);
@@ -173,14 +190,9 @@ void processRecv(SOCKET clientSocket) {
 				}
 				recvBytes += static_cast<unsigned long>(bytesReceived);
 			}
-#ifdef DEBUG_ASSIGNTMENT2_TEST
-			using namespace std::chrono_literals;
-			std::this_thread::sleep_for(5000ms);
-#endif
-
 			std::cout << std::endl;
 			std::cout << "==========RECV END==========" << std::endl;
-		}
+			}
 		else if (commandId == RSP_ECHO)
 		{
 			std::cout << "==========RECV START==========" << std::endl;
@@ -194,7 +206,7 @@ void processRecv(SOCKET clientSocket) {
 			}
 			memcpy(&netOrder, buffer + 5, 2);
 			unsigned long src_port = netOrder;
-			std::cout << std::string(src_ipStr) + ":" + std::to_string(ntohs(src_port)) << std::endl;
+			std::cout << std::string(src_ipStr) + ":" + std::to_string(ntohs(static_cast<unsigned short>(src_port))) << std::endl;
 			//get message
 			std::string recvMessage(buffer + 11, bytesReceived - 11);
 			std::cout << recvMessage;
@@ -237,9 +249,9 @@ void processRecv(SOCKET clientSocket) {
 			closesocket(clientSocket);
 			break;
 		}
+		}
 	}
-}
-// This program requires one extra command-line parameter: a server hostname.
+//main function
 int main(int argc)
 {
 	std::string portString;
@@ -343,11 +355,6 @@ int main(int argc)
 
 		if (input == "")
 		{
-			if (errorCode == SOCKET_ERROR)
-			{
-				closesocket(clientSocket);
-				break;
-			}
 			closesocket(clientSocket);
 			break;
 		}
@@ -361,7 +368,11 @@ int main(int argc)
 				message,
 				static_cast<int>(1),
 				0);
-			if (errorCode == SOCKET_ERROR)
+#ifdef DEBUG_ASSIGNTMENT2_TEST
+			using namespace std::chrono_literals;
+			std::this_thread::sleep_for(5000ms);
+#endif
+			if (bytesSent == SOCKET_ERROR)
 			{
 				closesocket(clientSocket);
 				break;
@@ -373,13 +384,18 @@ int main(int argc)
 		// if list users
 		else if (input[0] == '/' && input[1] == 'l')
 		{
+			char message[1]{};
 			message[0] = REQ_LISTUSERS;
 			int bytesSent = send(
 				clientSocket,
 				message,
 				static_cast<int>(1),
 				0);
-			if (errorCode == SOCKET_ERROR)
+#ifdef DEBUG_ASSIGNTMENT2_TEST
+			using namespace std::chrono_literals;
+			std::this_thread::sleep_for(5000ms);
+#endif
+			if (bytesSent == SOCKET_ERROR)
 			{
 				closesocket(clientSocket);
 				break;
@@ -430,13 +446,12 @@ int main(int argc)
 						message,
 						static_cast<int>(textLength + 11),
 						0);
+#ifdef DEBUG_ASSIGNTMENT2_TEST
+					using namespace std::chrono_literals;
+					std::this_thread::sleep_for(5000ms);
+#endif
 					if (bytesSent == SOCKET_ERROR)
 					{
-						if (errorCode == SOCKET_ERROR)
-						{
-							closesocket(clientSocket);
-							break;
-						}
 						closesocket(clientSocket);
 						break;
 					}
@@ -449,13 +464,12 @@ int main(int argc)
 						message,
 						static_cast<int>(BUFFER_SIZE),
 						0);
+#ifdef DEBUG_ASSIGNTMENT2_TEST
+					using namespace std::chrono_literals;
+					std::this_thread::sleep_for(5000ms);
+#endif
 					if (bytesSent == SOCKET_ERROR)
 					{
-						if (errorCode == SOCKET_ERROR)
-						{
-							closesocket(clientSocket);
-							break;
-						}
 						closesocket(clientSocket);
 						break;
 					}
@@ -471,13 +485,12 @@ int main(int argc)
 								message,
 								remainTextLength,
 								0);
+#ifdef DEBUG_ASSIGNTMENT2_TEST
+							using namespace std::chrono_literals;
+							std::this_thread::sleep_for(5000ms);
+#endif
 							if (bytesSent == SOCKET_ERROR)
 							{
-								if (errorCode == SOCKET_ERROR)
-								{
-									closesocket(clientSocket);
-									break;
-								}
 								closesocket(clientSocket);
 								break;
 							}
@@ -491,13 +504,12 @@ int main(int argc)
 								message,
 								BUFFER_SIZE,
 								0);
+#ifdef DEBUG_ASSIGNTMENT2_TEST
+							using namespace std::chrono_literals;
+							std::this_thread::sleep_for(5000ms);
+#endif
 							if (bytesSent == SOCKET_ERROR)
 							{
-								if (errorCode == SOCKET_ERROR)
-								{
-									closesocket(clientSocket);
-									break;
-								}
 								closesocket(clientSocket);
 								break;
 							}
@@ -505,24 +517,22 @@ int main(int argc)
 							remainTextLength -= BUFFER_SIZE;
 						}
 					}
-				}
+						}
 
 			}
 			else {
 				closesocket(clientSocket);
 				break;
 			}
+			continue;
 		}
 		else {
 			closesocket(clientSocket);
+			std::cerr << "disconnection..." << std::endl;
 			break;
 		}
-#ifdef DEBUG_ASSIGNTMENT2_TEST
-		using namespace std::chrono_literals;
-		std::this_thread::sleep_for(5000ms);
-#endif
-
 	}
+
 	//wait for processRecv to finish before closing the socket
 	if (execute_recv.joinable())
 		execute_recv.join();

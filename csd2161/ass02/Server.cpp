@@ -1,5 +1,20 @@
+/* Start Header
+*****************************************************************/
+/*!
+\file server.cpp
+\author Wei Jingsong
+\par jingsong.wei@digipen.edu
+\date March 3 2024
+\brief Multi-threading Winsock Programming using TCP sockets. This is the
+server code.
+
+Copyright (C) 20xx DigiPen Institute of Technology.
+Reproduction or disclosure of this file or its contents without the
+prior written consent of DigiPen Institute of Technology is prohibited.
+*/
+/* End Header
 /*******************************************************************************
- * A multi-threaded TCP/IP server application
+ * A multi-threaded TCP/IP server application with non-blocking sockets
  ******************************************************************************/
 
 #ifndef WIN32_LEAN_AND_MEAN
@@ -17,17 +32,38 @@
 
 #include <iostream>			// cout, cerr
 #include <string>			// string
-
+#include <mutex>			// mutex
+#include <map>
 #include "taskqueue.h"
+
+std::map<std::string, SOCKET> clientsMap;
+std::mutex clientsMapMutex;
 
 bool execute(SOCKET clientSocket);
 void disconnect(SOCKET& listenerSocket);
-
+enum CMDID {
+	UNKNOWN = (unsigned char)0x0,
+	REQ_QUIT = (unsigned char)0x1,
+	REQ_ECHO = (unsigned char)0x2,
+	RSP_ECHO = (unsigned char)0x3,
+	REQ_LISTUSERS = (unsigned char)0x4,
+	RSP_LISTUSERS = (unsigned char)0x5,
+	CMD_TEST = (unsigned char)0x20,
+	ECHO_ERROR = (unsigned char)0x30
+};
+void removeClient(SOCKET clientSocket) {
+	std::lock_guard<std::mutex> lock(clientsMapMutex);
+	for (auto& client : clientsMap)
+	{
+		if (client.second == clientSocket)
+		{
+			clientsMap.erase(client.first);
+			break;
+		}
+	}
+}
 int main()
 {
-	constexpr uint16_t port = 2048;
-
-	const std::string portString = std::to_string(port);
 
 
 	// -------------------------------------------------------------------------
@@ -50,13 +86,11 @@ int main()
 		return errorCode;
 	}
 
-	std::cout
-		<< "Winsock version: "
-		<< static_cast<int>(LOBYTE(wsaData.wVersion))
-		<< "."
-		<< static_cast<int>(HIBYTE(wsaData.wVersion))
-		<< "\n"
-		<< std::endl;
+	uint16_t port;
+	std::cout << "Server Port Number: ";
+	std::cin >> port;
+	std::cout << std::endl;
+	std::string portString = std::to_string(port);
 
 
 	// -------------------------------------------------------------------------
@@ -64,7 +98,15 @@ int main()
 	//
 	// getaddrinfo()
 	// -------------------------------------------------------------------------
-
+	// Get local hostname
+	char hostName[256];
+	errorCode = gethostname(hostName, sizeof(hostName));
+	if (errorCode)
+	{
+		std::cerr << "gethostname() failed with error: " << WSAGetLastError() << std::endl;
+		WSACleanup();
+		return errorCode;
+	}
 	// Object hints indicates which protocols to use to fill in the info.
 	addrinfo hints{};
 	SecureZeroMemory(&hints, sizeof(hints));
@@ -77,14 +119,19 @@ int main()
 	hints.ai_flags = AI_PASSIVE;
 
 	addrinfo* info = nullptr;
-	errorCode = getaddrinfo(nullptr, portString.c_str(), &hints, &info);
+	errorCode = getaddrinfo(hostName, portString.c_str(), &hints, &info);
 	if ((errorCode) || (info == nullptr))
 	{
 		std::cerr << "getaddrinfo() failed." << std::endl;
 		WSACleanup();
 		return errorCode;
 	}
-
+	// print server IP address and port number
+	sockaddr_in* addr_in = reinterpret_cast<sockaddr_in*>(info->ai_addr);
+	char ipStr[INET_ADDRSTRLEN];
+	inet_ntop(AF_INET, &(addr_in->sin_addr), ipStr, sizeof(ipStr));
+	std::cout << "Server IP Address: " << ipStr << std::endl;
+	std::cout << "Server Port number: " << port << std::endl;
 
 	// -------------------------------------------------------------------------
 	// Create a socket and bind it to own network interface controller.
@@ -144,7 +191,7 @@ int main()
 
 	{
 		const auto onDisconnect = [&]() { disconnect(listenerSocket); };
-		auto tq = TaskQueue<SOCKET, decltype(execute), decltype(onDisconnect)>{10, 20, execute, onDisconnect};
+		auto tq = TaskQueue<SOCKET, decltype(execute), decltype(onDisconnect)>{ 10, 20, execute, onDisconnect };
 		while (listenerSocket != INVALID_SOCKET)
 		{
 			sockaddr clientAddress{};
@@ -158,6 +205,23 @@ int main()
 			{
 				break;
 			}
+			char client_ipStr[INET_ADDRSTRLEN];
+			sockaddr_in* sockaddr_ipv4 = reinterpret_cast<sockaddr_in*>(&clientAddress);
+			if (inet_ntop(AF_INET, &sockaddr_ipv4->sin_addr, client_ipStr, sizeof(client_ipStr)) == nullptr) {
+				std::cerr << "Failed to convert IP address" << std::endl;
+				break;
+			}
+			std::lock_guard<std::mutex> usersLock{ _stdoutMutex };
+			std::cout << std::endl;
+			std::cout << "Client IP Address: " << client_ipStr << std::endl;
+			std::cout << "Client Port number: " << ntohs(sockaddr_ipv4->sin_port) << std::endl;
+
+			std::string clientID = std::string(client_ipStr) + ":" + std::to_string(ntohs(sockaddr_ipv4->sin_port));
+			{
+				std::lock_guard<std::mutex> lock(clientsMapMutex);
+				clientsMap[clientID] = clientSocket;
+			}
+
 			tq.produce(clientSocket);
 		}
 	}
@@ -179,6 +243,10 @@ void disconnect(SOCKET& listenerSocket)
 		closesocket(listenerSocket);
 		listenerSocket = INVALID_SOCKET;
 	}
+	{
+		std::lock_guard<std::mutex> lock(clientsMapMutex);
+		clientsMap.clear();
+	}
 }
 
 bool execute(SOCKET clientSocket)
@@ -195,6 +263,10 @@ bool execute(SOCKET clientSocket)
 	char buffer[BUFFER_SIZE];
 	bool stay = true;
 
+	// Enable non-blocking I/O on a socket.
+	u_long enable = 1;
+	ioctlsocket(clientSocket, FIONBIO, &enable);
+
 	while (true)
 	{
 		const int bytesReceived = recv(
@@ -204,33 +276,342 @@ bool execute(SOCKET clientSocket)
 			0);
 		if (bytesReceived == SOCKET_ERROR)
 		{
-			std::cerr << "recv() failed." << std::endl;
+			size_t errorCode = WSAGetLastError();
+			if (errorCode == WSAEWOULDBLOCK)
+			{
+				// A non-blocking call returned no data; sleep and try again.
+				using namespace std::chrono_literals;
+				std::this_thread::sleep_for(200ms);
+				continue;
+			}
+			removeClient(clientSocket);
+			closesocket(clientSocket);
 			break;
 		}
 		if (bytesReceived == 0)
 		{
+			std::lock_guard<std::mutex> usersLock{ _stdoutMutex };
 			std::cerr << "Graceful shutdown." << std::endl;
+			removeClient(clientSocket);
+			closesocket(clientSocket);
 			break;
 		}
-
 		buffer[bytesReceived] = '\0';
-		std::string text(buffer, bytesReceived);
-		std::cout
-			<< "Text received:  " << text << "\n"
-			<< "Bytes received: " << bytesReceived << "\n"
-			<< std::endl;
-
-		if (text == "*")
+		unsigned long hostLength{};
+		unsigned char commandId = buffer[0];
+		unsigned long des_ip{};
+		unsigned short des_port{};
+		//quit
+		if (commandId == REQ_QUIT)
 		{
-			std::cout << "Requested to close the server!" << std::endl;
-			stay = false;
+			removeClient(clientSocket);
+			closesocket(clientSocket);
 			break;
 		}
-
-		const int bytesSent = send(clientSocket, buffer, bytesReceived, 0);
-		if (bytesSent == SOCKET_ERROR)
+		//listusers
+		else if (commandId == REQ_LISTUSERS)
 		{
-			std::cerr << "send() failed." << std::endl;
+			std::lock_guard<std::mutex> lock(clientsMapMutex);
+			int num_users = static_cast<int>(clientsMap.size());
+			int length = 3 + 6 * num_users;
+			char message[BUFFER_SIZE]{};
+			message[0] = RSP_LISTUSERS;
+			unsigned short net_num_users = htons(static_cast<unsigned short>(num_users));
+			memcpy(message + 1, &net_num_users, 2);
+			int i = 0;
+			for (auto& client : clientsMap)
+			{
+				std::string user = client.first;
+				size_t colonPos = user.find(':');
+				if (colonPos != std::string::npos) {
+					std::string ipStr = user.substr(0, colonPos);
+					std::string portStr = user.substr(colonPos + 1);
+
+					in_addr addr;
+					if (inet_pton(AF_INET, ipStr.c_str(), &addr) != 1) {
+						break;
+					}
+					unsigned long ipULong = addr.s_addr;
+					unsigned long portUShort{};
+					memcpy(message + 3 + i * 6, &ipULong, 4);
+					try
+					{
+						portUShort = std::stoul(portStr);
+					}
+					catch (std::invalid_argument& e)
+					{
+						(void)e;
+						removeClient(clientSocket);
+						closesocket(clientSocket);
+						break;
+					}
+					portUShort = htons(static_cast<unsigned short>(portUShort));
+					memcpy(message + 7 + i * 6, &portUShort, 2);
+				}
+				else {
+					removeClient(clientSocket);
+					closesocket(clientSocket);
+					break;
+				}
+				i++;
+			}
+			const int bytesSent = send(clientSocket, message, length, 0);
+			if (bytesSent == SOCKET_ERROR) {
+				// Handle send error
+				removeClient(clientSocket);
+				closesocket(clientSocket);
+				break;
+			}
+		}
+		//echo
+		else if (commandId == REQ_ECHO)
+		{
+			//get text message length
+			unsigned long netOrder;
+			memcpy(&netOrder, buffer + 7, 4);
+			hostLength = ntohl(netOrder);
+			//if message length is invalid
+			if (static_cast<int>(hostLength) <= 0)
+			{
+				std::lock_guard<std::mutex> usersLock{ _stdoutMutex };
+				std::cerr << "Error invalid message length" << std::endl;
+				removeClient(clientSocket);
+				closesocket(clientSocket);
+				break;
+			}
+			//get destination ip and port
+			memcpy(&netOrder, buffer + 1, 4);
+			in_addr addr;
+			addr.s_addr = netOrder;
+			char des_ipStr[INET_ADDRSTRLEN];
+			if (inet_ntop(AF_INET, &addr, des_ipStr, INET_ADDRSTRLEN) == nullptr) {
+				break;
+			}
+			memcpy(&netOrder, buffer + 5, 2);
+			des_port = ntohs(static_cast<unsigned short>(netOrder));
+
+			//check if destination client exists
+			std::lock_guard<std::mutex> lock(clientsMapMutex);
+			std::string des_client = std::string(des_ipStr) + ":" + std::to_string(des_port);
+			auto it = clientsMap.find(des_client);
+			if (it == clientsMap.end()) {
+				// Client not found
+				char message[1]{};
+				message[0] = ECHO_ERROR;
+				const int bytesSent = send(clientSocket, message, 1, 0);
+				if (bytesSent == SOCKET_ERROR) {
+					// Handle send error
+					removeClient(clientSocket);
+					closesocket(clientSocket);
+					break;
+				}
+				continue;
+			}
+			SOCKET des_clientSocket = it->second;
+			//construct source client address
+			sockaddr_in clientAddr;
+			int addrSize = sizeof(clientAddr);
+			unsigned long netSrcAddr{};
+			if (getpeername(clientSocket, reinterpret_cast<sockaddr*>(&clientAddr), &addrSize) == 0) {
+				netSrcAddr = clientAddr.sin_addr.s_addr;
+			}
+			else
+			{
+				removeClient(clientSocket);
+				closesocket(clientSocket);
+				break;
+			}
+			unsigned short netSrcPort = clientAddr.sin_port;
+
+			//print des message on server
+			std::lock_guard<std::mutex> usersLock{ _stdoutMutex };
+			std::cout << "==========RECV START==========" << std::endl;
+			std::cout << des_client << std::endl;
+
+			//if message is longer than buffer size
+			std::string text(buffer + 11, bytesReceived - 11);
+			if (BUFFER_SIZE - 1 < hostLength + 11)
+			{
+				std::cout << text;
+				//construct message
+				memcpy(buffer + 1, &netSrcAddr, 4);
+				memcpy(buffer + 5, &netSrcPort, 2);
+				//send message to destination client
+				const int bytesSent = send(des_clientSocket, buffer, bytesReceived, 0);
+				if (bytesSent == SOCKET_ERROR) {
+					removeClient(clientSocket);
+					closesocket(clientSocket);
+					break;
+				}
+				unsigned long totalBytesReceived = bytesReceived - 11;
+				while (totalBytesReceived < hostLength)
+				{
+					char remainingBytes[BUFFER_SIZE];
+					const int addbytesReceived = recv(
+						clientSocket,
+						remainingBytes,
+						BUFFER_SIZE,
+						0);
+					if (addbytesReceived == SOCKET_ERROR)
+					{
+						removeClient(clientSocket);
+						closesocket(clientSocket);
+						break;
+					}
+					if (addbytesReceived == 0)
+					{
+						removeClient(clientSocket);
+						closesocket(clientSocket);
+						break;
+					}
+					std::string message(remainingBytes, addbytesReceived);
+					std::cout << message;
+					totalBytesReceived += addbytesReceived;
+					//sned to des client
+					const int bytesSent = send(des_clientSocket, remainingBytes, addbytesReceived, 0);
+					if (bytesSent == SOCKET_ERROR) {
+						removeClient(clientSocket);
+						closesocket(clientSocket);
+						break;
+					}
+				}
+				std::cout << std::endl;
+			}
+			else
+			{
+				std::cout << text << std::endl;
+				//construct message
+				memcpy(buffer + 1, &netSrcAddr, 4);
+				memcpy(buffer + 5, &netSrcPort, 2);
+				//send message to destination client
+				const int bytesSent = send(des_clientSocket, buffer, bytesReceived, 0);
+				if (bytesSent == SOCKET_ERROR) {
+					removeClient(clientSocket);
+					closesocket(clientSocket);
+					break;
+				}
+			}
+			std::cout << "==========RECV END==========" << std::endl;
+		}
+		else if (commandId == RSP_ECHO) {
+			//get text message length
+			unsigned long netOrder;
+			memcpy(&netOrder, buffer + 7, 4);
+			hostLength = ntohl(netOrder);
+			//if message length is invalid
+			if (static_cast<int>(hostLength) <= 0)
+			{
+				std::lock_guard<std::mutex> usersLock{ _stdoutMutex };
+				std::cerr << "Error invalid message length" << std::endl;
+				removeClient(clientSocket);
+				closesocket(clientSocket);
+				break;
+			}
+			//get destination ip and port
+			memcpy(&netOrder, buffer + 1, 4);
+			in_addr addr;
+			addr.s_addr = netOrder;
+			char des_ipStr[INET_ADDRSTRLEN];
+			if (inet_ntop(AF_INET, &addr, des_ipStr, INET_ADDRSTRLEN) == nullptr) {
+				break;
+			}
+			memcpy(&netOrder, buffer + 5, 2);
+			des_port = ntohs(static_cast<unsigned short>(netOrder));
+			//check if destination client exists
+			std::lock_guard<std::mutex> lock(clientsMapMutex);
+			std::string des_client = std::string(des_ipStr) + ":" + std::to_string(des_port);
+			auto it = clientsMap.find(des_client);
+			if (it == clientsMap.end()) {
+				// Client not found
+				char message[1]{};
+				message[0] = ECHO_ERROR;
+				const int bytesSent = send(clientSocket, message, 1, 0);
+				if (bytesSent == SOCKET_ERROR) {
+					// Handle send error
+					removeClient(clientSocket);
+					closesocket(clientSocket);
+					break;
+				}
+				continue;
+			}
+			SOCKET des_clientSocket = it->second;
+			//construct source client address
+			sockaddr_in clientAddr;
+			int addrSize = sizeof(clientAddr);
+			unsigned long netSrcAddr{};
+			if (getpeername(clientSocket, reinterpret_cast<sockaddr*>(&clientAddr), &addrSize) == 0) {
+				netSrcAddr = clientAddr.sin_addr.s_addr;
+			}
+			else
+			{
+				removeClient(clientSocket);
+				closesocket(clientSocket);
+				break;
+			}
+			unsigned short netSrcPort = clientAddr.sin_port;
+			//if message is longer than buffer size
+			std::string text(buffer + 11, bytesReceived - 11);
+			if (BUFFER_SIZE - 1 < hostLength + 11)
+			{
+				//construct message
+				memcpy(buffer + 1, &netSrcAddr, 4);
+				memcpy(buffer + 5, &netSrcPort, 2);
+				//send message to destination client
+				const int bytesSent = send(des_clientSocket, buffer, bytesReceived, 0);
+				if (bytesSent == SOCKET_ERROR) {
+					removeClient(clientSocket);
+					closesocket(clientSocket);
+					break;
+				}
+				unsigned long totalBytesReceived = bytesReceived - 11;
+				while (totalBytesReceived < hostLength)
+				{
+					char remainingBytes[BUFFER_SIZE];
+					const int addbytesReceived = recv(
+						clientSocket,
+						remainingBytes,
+						BUFFER_SIZE,
+						0);
+					if (addbytesReceived == SOCKET_ERROR)
+					{
+						removeClient(clientSocket);
+						closesocket(clientSocket);
+						break;
+					}
+					if (addbytesReceived == 0)
+					{
+						removeClient(clientSocket);
+						closesocket(clientSocket);
+						break;
+					}
+					totalBytesReceived += addbytesReceived;
+					//sned to des client
+					const int bytesSent = send(des_clientSocket, remainingBytes, addbytesReceived, 0);
+					if (bytesSent == SOCKET_ERROR) {
+						removeClient(clientSocket);
+						closesocket(clientSocket);
+						break;
+					}
+				}
+			}
+			else
+			{
+				//construct message
+				memcpy(buffer + 1, &netSrcAddr, 4);
+				memcpy(buffer + 5, &netSrcPort, 2);
+				//send message to destination client
+				const int bytesSent = send(des_clientSocket, buffer, bytesReceived, 0);
+				if (bytesSent == SOCKET_ERROR) {
+					removeClient(clientSocket);
+					closesocket(clientSocket);
+					break;
+				}
+			}
+		}
+		else //undefined command
+		{
+			removeClient(clientSocket);
+			closesocket(clientSocket);
 			break;
 		}
 	}
@@ -247,3 +628,7 @@ bool execute(SOCKET clientSocket)
 	closesocket(clientSocket);
 	return stay;
 }
+
+
+
+

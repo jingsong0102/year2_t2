@@ -1,3 +1,18 @@
+/* Start Header
+*****************************************************************/
+/*!
+\file server.cpp
+\author Wei Jingsong
+\par jingsong.wei@digipen.edu
+\date March 3 2024
+\brief Multi-threading Winsock Programming using TCP sockets. This is the
+server code.
+
+Copyright (C) 20xx DigiPen Institute of Technology.
+Reproduction or disclosure of this file or its contents without the
+prior written consent of DigiPen Institute of Technology is prohibited.
+*/
+/* End Header
 /*******************************************************************************
  * A multi-threaded TCP/IP server application with non-blocking sockets
  ******************************************************************************/
