@@ -1,2 +1,4 @@
 ﻿  echoclient.cpp
+C:\Year2\t2\csd2161\ass02\ass02_client\echoclient.cpp(111,69): warning C4244: 'argument': conversion from 'unsigned long' to 'u_short', possible loss of data
+C:\Year2\t2\csd2161\ass02\ass02_client\echoclient.cpp(197,69): warning C4244: 'argument': conversion from 'unsigned long' to 'u_short', possible loss of data
   ass02_client.vcxproj -> C:\Year2\t2\csd2161\ass02\ass02_client\x64\Debug\ass02_client.exe

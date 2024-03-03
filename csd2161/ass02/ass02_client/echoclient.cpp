@@ -36,6 +36,8 @@ prior written consent of DigiPen Institute of Technology is prohibited.
 #include <vector>	// vector
 #include <limits>
 #include <sstream>
+#include <algorithm> // For std::remove_if
+#include <cctype> // For isspace
 enum CMDID {
 	UNKNOWN = (unsigned char)0x0,
 	REQ_QUIT = (unsigned char)0x1,
@@ -46,19 +48,197 @@ enum CMDID {
 	CMD_TEST = (unsigned char)0x20,
 	ECHO_ERROR = (unsigned char)0x30
 };
-// Helper function converts a string of hexadecimal digits into a string
-std::string hexToString(const std::string& hex)
-{
-	std::string str;
-	for (size_t i = 0; i < hex.length(); i += 2)
-	{
-		std::string byteString = hex.substr(i, 2);
-		char byte = static_cast<char>(std::stoul(byteString, nullptr, 16));
-		str.push_back(byte);
-	}
-	return str;
-}
+constexpr size_t BUFFER_SIZE = 14;
+int textLength{};
+void processRecv(SOCKET clientSocket) {
+	while (true) {
+		char buffer[BUFFER_SIZE];
+		const int bytesReceived = recv(
+			clientSocket,
+			buffer,
+			BUFFER_SIZE,
+			0);
+		if (bytesReceived == SOCKET_ERROR)
+		{
+			closesocket(clientSocket);
+			break;
+		}
+		else if (bytesReceived == 0)
+		{
+			closesocket(clientSocket);
+			break;
+		}
+		unsigned long netOrder{};
+		unsigned char commandId = buffer[0];
+		if (commandId == RSP_LISTUSERS) {
+			std::cout << "==========RECV START==========" << std::endl;
+			std::cout << "Users:" << std::endl;
+			memcpy(&netOrder, buffer + 1, 2);
+			unsigned short totalUsers = ntohs(static_cast<unsigned short>(netOrder));
+			for (int i = 0; i < totalUsers; ++i) {
+				memcpy(&netOrder, buffer + 3 + i * 6, 4);
+				in_addr addr;
+				addr.s_addr = netOrder;
+				char ipStr[INET_ADDRSTRLEN];
+				if (inet_ntop(AF_INET, &addr, ipStr, INET_ADDRSTRLEN) == nullptr) {
+					break;
+				}
+				memcpy(&netOrder, buffer + 7 + i * 6, 2);
+				unsigned short port = ntohs(static_cast<unsigned short>(netOrder));
+				std::cout << ipStr << ":" << port << std::endl;
+			}
+			std::cout << "==========RECV END==========" << std::endl;
+		}
+		else if (commandId == ECHO_ERROR) {
+			std::cout << "==========RECV START==========" << std::endl;
+			std::cout << "Echo error" << std::endl;
+			std::cout << "==========RECV END==========" << std::endl;
+		}
+		else if (commandId == REQ_ECHO)
+		{
+			std::cout << "==========RECV START==========" << std::endl;
+			//get src ip and port
+			memcpy(&netOrder, buffer + 1, 4);
+			unsigned long ipULong = netOrder;
+			in_addr addr;
+			addr.s_addr = netOrder;
+			char src_ipStr[INET_ADDRSTRLEN];
+			if (inet_ntop(AF_INET, &addr, src_ipStr, INET_ADDRSTRLEN) == nullptr) {
+				break;
+			}
+			memcpy(&netOrder, buffer + 5, 2);
+			unsigned long src_port = netOrder;
+			std::cout << std::string(src_ipStr) + ":" + std::to_string(ntohs(src_port)) << std::endl;
+			//get message
+			std::string recvMessage(buffer + 11, bytesReceived - 11);
+			std::cout << recvMessage;
 
+			unsigned long totalBytes{};
+			memcpy(&totalBytes, buffer + 7, 4);
+			//construct RSP_ECHO message
+			char rspEchoMessage[BUFFER_SIZE]{};
+			rspEchoMessage[0] = RSP_ECHO;
+			memcpy(rspEchoMessage + 1, &ipULong, 4);
+			memcpy(rspEchoMessage + 5, &src_port, 2);
+			memcpy(rspEchoMessage + 7, &totalBytes, 4);
+			memcpy(rspEchoMessage + 11, recvMessage.c_str(), recvMessage.length());
+			//send RSP_ECHO message
+			const int bytesSent = send(
+				clientSocket,
+				rspEchoMessage,
+				static_cast<int>(bytesReceived),
+				0);
+			if (bytesSent == SOCKET_ERROR)
+			{
+				closesocket(clientSocket);
+				break;
+			}
+
+			totalBytes = ntohl(totalBytes);
+			//if there is remaining message
+			unsigned long recvBytes = static_cast<unsigned long>(bytesReceived - 11);
+			//loop until all message is received
+			while (recvBytes < totalBytes)
+			{
+				const int bytesReceived = recv(
+					clientSocket,
+					buffer,
+					BUFFER_SIZE,
+					0);
+				if (bytesReceived == SOCKET_ERROR)
+				{
+
+					closesocket(clientSocket);
+					break;
+				}
+				else if (bytesReceived == 0)
+				{
+					closesocket(clientSocket);
+					break;
+				}
+				else
+				{
+					std::string recvMessage(buffer, bytesReceived);
+					std::cout << recvMessage;
+					const int bytesSent = send(
+						clientSocket,
+						buffer,
+						static_cast<int>(bytesReceived),
+						0);
+					if (bytesSent == SOCKET_ERROR)
+					{
+						closesocket(clientSocket);
+						break;
+					}
+				}
+				recvBytes += static_cast<unsigned long>(bytesReceived);
+			}
+#ifdef DEBUG_ASSIGNTMENT2_TEST
+			using namespace std::chrono_literals;
+			std::this_thread::sleep_for(5000ms);
+#endif
+
+			std::cout << std::endl;
+			std::cout << "==========RECV END==========" << std::endl;
+		}
+		else if (commandId == RSP_ECHO)
+		{
+			std::cout << "==========RECV START==========" << std::endl;
+			//get src ip and port
+			memcpy(&netOrder, buffer + 1, 4);
+			in_addr addr;
+			addr.s_addr = netOrder;
+			char src_ipStr[INET_ADDRSTRLEN];
+			if (inet_ntop(AF_INET, &addr, src_ipStr, INET_ADDRSTRLEN) == nullptr) {
+				break;
+			}
+			memcpy(&netOrder, buffer + 5, 2);
+			unsigned long src_port = netOrder;
+			std::cout << std::string(src_ipStr) + ":" + std::to_string(ntohs(src_port)) << std::endl;
+			//get message
+			std::string recvMessage(buffer + 11, bytesReceived - 11);
+			std::cout << recvMessage;
+			unsigned long totalBytes{};
+			memcpy(&totalBytes, buffer + 7, 4);
+			totalBytes = ntohl(totalBytes);
+			//if there is remaining message
+			unsigned long recvBytes = static_cast<unsigned long>(bytesReceived - 11);
+			//loop until all message is received
+			while (recvBytes < totalBytes)
+			{
+				const int bytesReceived = recv(
+					clientSocket,
+					buffer,
+					BUFFER_SIZE,
+					0);
+				if (bytesReceived == SOCKET_ERROR)
+				{
+
+					closesocket(clientSocket);
+					break;
+				}
+				else if (bytesReceived == 0)
+				{
+
+					closesocket(clientSocket);
+					break;
+				}
+				else
+				{
+					std::string recvMessage(buffer, bytesReceived);
+					std::cout << recvMessage;
+				}
+				recvBytes += static_cast<unsigned long>(bytesReceived);
+			}
+			std::cout << std::endl;
+			std::cout << "==========RECV END==========" << std::endl;
+		}
+		else {
+			closesocket(clientSocket);
+			break;
+		}
+	}
+}
 // This program requires one extra command-line parameter: a server hostname.
 int main(int argc)
 {
@@ -150,10 +330,12 @@ int main(int argc)
 	// send()
 	// -------------------------------------------------------------------------
 
-	constexpr size_t BUFFER_SIZE = 1000;
-	int textLength{};
 	// ignore newline char left by key in ip and port
 	std::cin.ignore((std::numeric_limits<std::streamsize>::max)(), '\n');
+
+	//receive message from server
+	std::thread execute_recv(processRecv, clientSocket);
+	//process user input
 	while (true)
 	{
 		std::string input;
@@ -203,215 +385,147 @@ int main(int argc)
 				break;
 			}
 		}
-		else if (input[0] == '/' && input[1] == 't') {
-			message[0] = UNKNOWN;
-			int bytesSent = send(
-				clientSocket,
-				message,
-				static_cast<int>(1),
-				0);
-			if (errorCode == SOCKET_ERROR)
-			{
-				closesocket(clientSocket);
-				break;
-			}
-		}
-		else // if normal message
+		// if REQ_ECHO
+		else if (input[0] == '/' && input[1] == 'e')
 		{
-			message[0] = 2; // ECHO command
-			textLength = static_cast<int>(input.length());
-			unsigned long netLength = htonl(static_cast<unsigned long>(textLength));
-			memcpy(message + 1, &netLength, 4);
-			//if message can be sent in one chunk
-			if (textLength <= BUFFER_SIZE - 5)
-			{
-				memcpy(message + 5, input.c_str(), textLength);
-				int bytesSent = send(
-					clientSocket,
-					message,
-					static_cast<int>(textLength + 5),
-					0);
-				if (bytesSent == SOCKET_ERROR)
-				{
-					if (errorCode == SOCKET_ERROR)
-					{
-						closesocket(clientSocket);
-						break;
-					}
-					closesocket(clientSocket);
-					break;
-				}
-			}
-			else //loop until all message is sent
-			{
-				memcpy(message + 5, input.c_str(), BUFFER_SIZE - 5);
-				int bytesSent = send(
-					clientSocket,
-					message,
-					static_cast<int>(BUFFER_SIZE),
-					0);
-				if (bytesSent == SOCKET_ERROR)
-				{
-					if (errorCode == SOCKET_ERROR)
-					{
-						closesocket(clientSocket);
-						break;
-					}
-					closesocket(clientSocket);
-					break;
-				}
-				input.erase(0, BUFFER_SIZE - 5);
-				int remainTextLength = static_cast<int>(textLength - (BUFFER_SIZE - 5));
-				while (remainTextLength > 0)
-				{
-					if (remainTextLength <= BUFFER_SIZE)
-					{
-						memcpy(message, input.c_str(), remainTextLength);
-						bytesSent = send(
-							clientSocket,
-							message,
-							remainTextLength,
-							0);
-						if (bytesSent == SOCKET_ERROR)
-						{
-							if (errorCode == SOCKET_ERROR)
-							{
-								closesocket(clientSocket);
-								break;
-							}
-							closesocket(clientSocket);
-							break;
-						}
-						remainTextLength = 0;
-					}
-					else
-					{
-						memcpy(message, input.c_str(), BUFFER_SIZE);
-						bytesSent = send(
-							clientSocket,
-							message,
-							BUFFER_SIZE,
-							0);
-						if (bytesSent == SOCKET_ERROR)
-						{
-							if (errorCode == SOCKET_ERROR)
-							{
-								closesocket(clientSocket);
-								break;
-							}
-							closesocket(clientSocket);
-							break;
-						}
-						input.erase(0, BUFFER_SIZE);
-						remainTextLength -= BUFFER_SIZE;
-					}
-				}
-			}
-		}
-		//receive message from server
-		char buffer[BUFFER_SIZE];
-		const int bytesReceived = recv(
-			clientSocket,
-			buffer,
-			BUFFER_SIZE,
-			0);
-		if (bytesReceived == SOCKET_ERROR)
-		{
-			errorCode = shutdown(clientSocket, SD_SEND);
-			if (errorCode == SOCKET_ERROR)
-			{
-				closesocket(clientSocket);
-				break;
-			}
+			input.erase(0, 3);
+			message[0] = REQ_ECHO; // ECHO command
+			size_t colonPos = input.find(':');
+			size_t spacePos = input.find(' ', colonPos);
 
-			closesocket(clientSocket);
-			break;
-		}
-		else if (bytesReceived == 0)
-		{
-			errorCode = shutdown(clientSocket, SD_SEND);
-			if (errorCode == SOCKET_ERROR)
-			{
-				closesocket(clientSocket);
-				break;
-			}
-			closesocket(clientSocket);
-			break;
-		}
-
-		unsigned char commandId = buffer[0];
-		if (commandId == RSP_LISTUSERS) {
-			std::cout << "==========RECV START==========" << std::endl;
-			std::cout << "Users:" << std::endl;
-			unsigned long netOrder{};
-			memcpy(&netOrder, buffer + 1, 2);
-			unsigned short totalUsers = ntohs(static_cast<unsigned short>(netOrder));
-			for (int i = 0; i < totalUsers; ++i) {
-				memcpy(&netOrder, buffer + 3 + i * 6, 4);
+			if (colonPos != std::string::npos && spacePos != std::string::npos) {
+				std::string ipStr = input.substr(0, colonPos);
+				std::string portStr = input.substr(colonPos + 1, spacePos - colonPos - 1);
+				std::string text = input.substr(spacePos + 1);
+				// Remove any whitespace in ipStr
+				ipStr.erase(std::remove_if(ipStr.begin(), ipStr.end(), isspace), ipStr.end());
+				//convert ip and port
 				in_addr addr;
-				addr.s_addr = netOrder;
-				char ipStr[INET_ADDRSTRLEN];
-				if (inet_ntop(AF_INET, &addr, ipStr, INET_ADDRSTRLEN) == nullptr) {
-					break;
-				}
-				memcpy(&netOrder, buffer + 7 + i * 6, 2);
-				unsigned short port = ntohs(static_cast<unsigned short>(netOrder));
-				std::cout << ipStr << ":" << port << std::endl;
-			}
-			std::cout << "==========RECV END==========" << std::endl;
-		}
-		else
-		{
-			std::string recvMessage(buffer + 5, bytesReceived - 5);
-			std::cout << recvMessage;
-
-			unsigned long totalBytes{};
-			memcpy(&totalBytes, buffer + 1, 4);
-			totalBytes = ntohl(totalBytes);
-			//if there is remaining message
-			unsigned long recvBytes = static_cast<unsigned long>(bytesReceived - 5);
-			//loop until all message is received
-			while (recvBytes < totalBytes)
-			{
-				const int bytesReceived = recv(
-					clientSocket,
-					buffer,
-					BUFFER_SIZE,
-					0);
-				if (bytesReceived == SOCKET_ERROR)
-				{
-					errorCode = shutdown(clientSocket, SD_SEND);
-					if (errorCode == SOCKET_ERROR)
-					{
-						closesocket(clientSocket);
-						break;
-					}
-
+				if (inet_pton(AF_INET, ipStr.c_str(), &addr) != 1) {
 					closesocket(clientSocket);
 					break;
 				}
-				else if (bytesReceived == 0)
-				{
-					errorCode = shutdown(clientSocket, SD_SEND);
-					if (errorCode == SOCKET_ERROR)
+				unsigned long ipULong = addr.s_addr;
+				unsigned short portUShort{};
+				try {
+					portUShort = static_cast<unsigned short>(std::stoul(portStr));
+				}
+				catch (const std::out_of_range& e) {
+					(void)e;
+				}
+				catch (const std::invalid_argument& e) {
+					(void)e;
+				}
+				portUShort = htons(portUShort);
+				memcpy(message + 1, &ipULong, 4);
+				memcpy(message + 5, &portUShort, 2);
+				textLength = static_cast<int>(text.length());
+				unsigned long netLength = htonl(static_cast<unsigned long>(textLength));
+				memcpy(message + 7, &netLength, 4);
+				//if message can be sent in one chunk
+				if (textLength <= BUFFER_SIZE - 11) {
+					memcpy(message + 11, text.c_str(), textLength);
+					const int bytesSent = send(
+						clientSocket,
+						message,
+						static_cast<int>(textLength + 11),
+						0);
+					if (bytesSent == SOCKET_ERROR)
 					{
+						if (errorCode == SOCKET_ERROR)
+						{
+							closesocket(clientSocket);
+							break;
+						}
 						closesocket(clientSocket);
 						break;
 					}
-					closesocket(clientSocket);
-					break;
 				}
-				else
+				else //loop until all message is sent
 				{
-					std::string recvMessage(buffer, bytesReceived);
-					std::cout << recvMessage;
+					memcpy(message + 11, text.c_str(), BUFFER_SIZE - 11);
+					const int bytesSent = send(
+						clientSocket,
+						message,
+						static_cast<int>(BUFFER_SIZE),
+						0);
+					if (bytesSent == SOCKET_ERROR)
+					{
+						if (errorCode == SOCKET_ERROR)
+						{
+							closesocket(clientSocket);
+							break;
+						}
+						closesocket(clientSocket);
+						break;
+					}
+					text.erase(0, BUFFER_SIZE - 11);
+					int remainTextLength = static_cast<int>(textLength - (BUFFER_SIZE - 11));
+					while (remainTextLength > 0)
+					{
+						if (remainTextLength <= BUFFER_SIZE)
+						{
+							memcpy(message, text.c_str(), remainTextLength);
+							const int bytesSent = send(
+								clientSocket,
+								message,
+								remainTextLength,
+								0);
+							if (bytesSent == SOCKET_ERROR)
+							{
+								if (errorCode == SOCKET_ERROR)
+								{
+									closesocket(clientSocket);
+									break;
+								}
+								closesocket(clientSocket);
+								break;
+							}
+							remainTextLength = 0;
+						}
+						else
+						{
+							memcpy(message, text.c_str(), BUFFER_SIZE);
+							const int bytesSent = send(
+								clientSocket,
+								message,
+								BUFFER_SIZE,
+								0);
+							if (bytesSent == SOCKET_ERROR)
+							{
+								if (errorCode == SOCKET_ERROR)
+								{
+									closesocket(clientSocket);
+									break;
+								}
+								closesocket(clientSocket);
+								break;
+							}
+							text.erase(0, BUFFER_SIZE);
+							remainTextLength -= BUFFER_SIZE;
+						}
+					}
 				}
-				recvBytes += static_cast<unsigned long>(bytesReceived);
+
 			}
-			std::cout << std::endl;
+			else {
+				closesocket(clientSocket);
+				break;
+			}
 		}
+		else {
+			closesocket(clientSocket);
+			break;
+		}
+#ifdef DEBUG_ASSIGNTMENT2_TEST
+		using namespace std::chrono_literals;
+		std::this_thread::sleep_for(5000ms);
+#endif
+
 	}
-
+	//wait for processRecv to finish before closing the socket
+	if (execute_recv.joinable())
+		execute_recv.join();
 	// -------------------------------------------------------------------------
 	// Clean-up after Winsock.
 	//
