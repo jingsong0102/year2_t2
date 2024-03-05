@@ -1,0 +1,41 @@
+Moves: 0
++-------+-------+-------+
+| D   I |   G   |       |
+|       |     B |       |
+|     H |   I F |       |
++-------+-------+-------+
+|   E F |   B   |     D |
+|     A |       | G     |
+| I     |   C   | H F   |
++-------+-------+-------+
+|       | G D   | C     |
+|       | I     |       |
+|       |   A   | F   E |
++-------+-------+-------+
+  Basesize: 3
+     Moves: 0
+    Placed: 0
+Backtracks: 0
+  Filename: board3-2.txt
+
+Solution found in 1033285 moves.
+Moves: 1033285
++-------+-------+-------+
+| D C I | H G A | E B F |
+| F A G | C E B | D I H |
+| E B H | D I F | A G C |
++-------+-------+-------+
+| H E F | A B G | I C D |
+| C D A | F H I | G E B |
+| I G B | E C D | H F A |
++-------+-------+-------+
+| B F E | G D H | C A I |
+| A H C | I F E | B D G |
+| G I D | B A C | F H E |
++-------+-------+-------+
+  Basesize: 3
+     Moves: 1033285
+    Placed: 57
+Backtracks: 114779
+  Filename: board3-2.txt
+
