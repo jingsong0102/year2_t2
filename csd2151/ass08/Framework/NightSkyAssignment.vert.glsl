@@ -1,3 +1,12 @@
+/*!*****************************************************************************
+\file NightSkyAssignment.vert.glsl
+\author Vadim Surov (vsurov\@digipen.edu)
+\co-author Wei Jingsong (jingsong.wei@digipen.edu)
+\par Course: CSD2151
+\par Assignment: 8 (NightSky App)
+\date 03/06/2024 (MM/DD/YYYY)
+\brief This is the vertex shader file for NightSky App.
+*******************************************************************************/
 R"(
 
 #version 330 core

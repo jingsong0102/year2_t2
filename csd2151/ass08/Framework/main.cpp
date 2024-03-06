@@ -1,10 +1,10 @@
 /*!*****************************************************************************
 \file main.cpp
 \author Vadim Surov (vsurov\@digipen.edu)
-\co-author YOUR NAME (DIGIPEN ID)
-\par Course: CSD2151/CSD2150/CS250
-\par Assignment:
-\date 02/09/2024 (MM/DD/YYYY)
+\co-author Wei Jingsong (jingsong.wei@digipen.edu)
+\par Course: CSD2151
+\par Assignment: 8 (NightSky App)
+\date 03/06/2024 (MM/DD/YYYY)
 \brief This file has definitions of the main function
 	   along with global variables and sub-functions used in main.
 *******************************************************************************/
@@ -122,7 +122,7 @@ int main(int argc, char** argv)
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
 	glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
 
-	GLFWwindow* pWindow = glfwCreateWindow(WIDTH, HEIGHT, "Framework", NULL, NULL);
+	GLFWwindow* pWindow = glfwCreateWindow(WIDTH, HEIGHT, "NightSkyAssignment - PBR", NULL, NULL);
 	if (!pWindow)
 	{
 		std::cerr << "Unable to create OpenGL context." << std::endl;
@@ -150,7 +150,16 @@ int main(int argc, char** argv)
 #endif
 
 	std::cout << std::endl;
-	std::cout << "A computer graphics framework." << std::endl;
+	std::cout << "The NightSkyAssignment demo." << std::endl;
+	std::cout << "Description:" << std::endl;
+	std::cout << "   This app demonstrates a multiple-pass mesh rendering process with vertex and" << std::endl;
+	std::cout << "   fragment shaders that implement different types of shadings: PBR, fog, cartoon, and discard." << std::endl;
+	std::cout << "Interactions:" << std::endl;
+	std::cout << "   - Press W or O to switch between the camera movement types (orbiting or walking)." << std::endl;
+	std::cout << "   - The camera movement is controlled by the mouse left button and wheel." << std::endl;
+	std::cout << "   - The light is controlled the same way when shift is pressed." << std::endl;
+	std::cout << "   - The screen is resizable." << std::endl;
+	std::cout << "   - You can press key Esc to close the app." << std::endl;
 	std::cout << std::endl;
 
 #if defined( _DEBUG )

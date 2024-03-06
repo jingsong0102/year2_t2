@@ -1,3 +1,12 @@
+/*!*****************************************************************************
+\file NightSkyAssignment.frag.glsl
+\author Vadim Surov (vsurov\@digipen.edu)
+\co-author Wei Jingsong (jingsong.wei@digipen.edu)
+\par Course: CSD2151
+\par Assignment: 8 (NightSky App)
+\date 03/06/2024 (MM/DD/YYYY)
+\brief This is the fragment shader file for NightSky App.
+*******************************************************************************/
 R"(
 #version 420
 
@@ -46,7 +55,6 @@ in vec3 Vec;
 
 void pass0() 
 {
-    // Access the cube map texture
     vec3 color = texture(CubeMapTex, normalize(Vec)).rgb;
 
     // Gamma correction
@@ -66,25 +74,12 @@ in vec3 Position;
 in vec3 Normal;
 in vec2 TexCoord;
 
-vec4 checkerboardTexture(vec2 uv, float size)
-{
-    uv = uv * size;
-
-    float color = mod(floor(uv.x) + floor(uv.y), 2.0f); // x+y even:black  odd:white
-
-    return vec4(color, color, color, 1.0f);
-}
+const float PI = 3.14159265358979323846;
 
 float cartoon(float value)
 {
-    return floor(value * CARTOON_LEVELS) / CARTOON_LEVELS;
+    return floor(value * CARTOON_LEVELS) * 1.0f / CARTOON_LEVELS;
 }
-
-
-// PBR stuff
-
-const float PI = 3.14159265358979323846;
-
 //
 // The Microgeometry Normal Distribution Function, based on GGX/Trowbrodge-Reitz, 
 // that describes the relative concentration of microfacet normals 
@@ -139,7 +134,7 @@ vec3 schlickFresnel(float lDotH)
 //
 // Parameters are the position of a fragment and the surface normal in the view space.
 //
-vec3 microfacetModel(vec3 position, vec3 n, bool isCartoon) 
+vec3 microfacetModel(vec3 position, vec3 n, bool cartoon_ = false) 
 {  
     vec3 diffuseBrdf = material.color;
 
@@ -154,70 +149,72 @@ vec3 microfacetModel(vec3 position, vec3 n, bool isCartoon)
     vec3 v = normalize(-position);
     vec3 h = normalize(v + l);
     float nDotH = dot(n, h);
-
-    if (isCartoon)
-        nDotH = cartoon(nDotH);
-
     float lDotH = dot(l, h);
-
-    if (isCartoon)
-        lDotH = cartoon(lDotH);
-
     float nDotL = max(dot(n, l), 0.0f);
-
-    if (isCartoon)
-        nDotL = cartoon(nDotL);
-
     float nDotV = dot(n, v);
 
-    if (isCartoon)
+    if (cartoon_)
+    {   
+        nDotH = cartoon(nDotH);
+        lDotH = cartoon(lDotH);
+        nDotL = cartoon(nDotL);
         nDotV = cartoon(nDotV);
-
-    vec3 specBrdf = 0.25f * ggxDistribution(nDotH) * schlickFresnel(lDotH) * geomSmith(nDotL) * geomSmith(nDotV);
+    }
+    
+    vec3 specBrdf = 0.25f * ggxDistribution(nDotH) * schlickFresnel(lDotH) 
+                            * geomSmith(nDotL) * geomSmith(nDotV);
 
     return (diffuseBrdf + PI * specBrdf) * lightI * nDotL;
 }
+
+vec4 checkerboardTexture(vec2 uv, float size)
+{
+     // Scale the UV coordinates
+    uv *= size;
+
+    // Calculate the checker pattern
+    int checker = int(floor(uv.x) + floor(uv.y)) % 2;
+
+    // Return black or white based on the checker value
+    return checker > 0 ? vec4(1.0f, 1.0f, 1.0f, 1.0f) : vec4(0.0f, 0.0f, 0.0f, 1.0f);
+}
+
 void pass1() 
 {
-    bool isCartoon = (material.effect==2.0f);
-
-    vec4 frontColor;
-    vec4 backColor;
-    frontColor = vec4(microfacetModel(Position, normalize(Normal), isCartoon), 1.0f);
-    backColor = vec4(microfacetModel(Position, normalize(-Normal), false), 1.0f);
-    
-    vec4 effectColor = vec4(0.0f);
-
+    vec3 color;
+    //apply effect
     if (material.effect==0.0f) // No effect
-        effectColor = frontColor;
+    {    
+        color = microfacetModel(Position, normalize(Normal));
+    }
     else if (material.effect==1.0f) // Discard
     {
-        vec2 f = fract(TexCoord * DISCARD_SCALE);
-
-        // This does not work on some comps.
-        //    if ( all( greaterThan(fract(TexCoord * DISCARD_SCALE), vec2(0.05f, 0.05f))) && 
-        //          lessThan(fract(TexCoord * DISCARD_SCALE), vec2(0.95f, 0.95f))) )
-        //    if ( length(fract(TexCoord * DISCARD_SCALE)-vec2(0.5f, 0.5f)) < 0.5f ) 
-
-        if (f.x>0.05f && f.y>0.05f && f.x<0.95f && f.y<0.95f && 
-            length(f-vec2(0.5f, 0.5f)) < 0.5f)
-                 discard;
-
-        if (gl_FrontFacing)
-            effectColor = frontColor;
-        else
-            effectColor = backColor;
-    }
-    else if (material.effect==2.0f) // Cartoon
-        effectColor = frontColor;
-    else if (material.effect==3.0f) // Checkerboard texture
-        effectColor = mix(frontColor, checkerboardTexture(TexCoord, CHECKERBOARD_SIZE), CHECKERBOARD_MIXLEVEL);
-    else
+        vec2 fractional = fract(TexCoord * DISCARD_SCALE);
+        //distance from center
+        float distance = length(fractional - vec2(0.5f, 0.5f));
+        bvec2 toDiscard = greaterThan(fractional, vec2(0.025f, 0.025f)) 
+                        && lessThan(fractional, vec2(0.985f, 0.985f));
+        if (all(toDiscard) && distance < 0.45f)
         discard;
 
+        if (gl_FrontFacing)
+            color = microfacetModel(Position, normalize(Normal));
+        else
+            color = microfacetModel(Position, normalize(-Normal));
+    }
+    else if (material.effect==2.0f) // Cartoon
+    {    
+        color = microfacetModel(Position, normalize(Normal), true);
+    }
+    else if (material.effect==3.0f) // Checkerboard texture
+    {    
+        color = mix(microfacetModel(Position, normalize(Normal)), checkerboardTexture(TexCoord, CHECKERBOARD_SIZE).rgb, CHECKERBOARD_MIXLEVEL);
+    }
+    else
+        discard;
+    //apply fog
     float fogFactor = clamp((FOG_MAXDIST - length(Position)) / (FOG_MAXDIST - FOG_MINDIST), 0.0f, 1.0f);
-
-    vec3 color = mix(FOG_COLOR, effectColor.xyz, fogFactor);
+    color = mix(FOG_COLOR, color, fogFactor);
 
     // Gamma correction 
     color = pow(color, vec3(1.0f/2.2f));
