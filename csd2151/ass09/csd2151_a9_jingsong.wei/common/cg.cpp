@@ -85,24 +85,14 @@ namespace cg
         }
     }
 
-    Scene::Pass::Object::Object(const char* meshName,
-            const Material& material /*= { }*/,
-            const glm::mat4& modeltransform /*= NOTRANSFORM*/,
-            bool isVisible /*= VISIBLE*/)
-        : 
-        material{ material },
-        modeltransform{ modeltransform },
-        isVisible{ isVisible },
-        vao{ 0 },
-        buffers{ },
-        size{ 0 }
+    void Scene::Pass::Object::setBuffers(const char* meshName)
     {
         TriangleMesh mesh(meshName);
 
         // Must have data for indices, points, and normals
         if (mesh.indices.empty() || mesh.points.empty() || mesh.normals.empty())
             return;
-        
+
         size = mesh.indices.size();
 
         GLuint indexBuf = 0, posBuf = 0, normBuf = 0, tcBuf = 0, tangentBuf = 0;
@@ -197,23 +187,26 @@ namespace cg
                 glClear(GL_COLOR_BUFFER_BIT);
             }
 
-            // Set and crear the depth buffer
-            GLboolean enableDepthTest;
-            glGetBooleanv(GL_DEPTH_TEST, &enableDepthTest);
-            if (enableDepthTest)
-                if (pass.enableDepthBuffer)
-                    glClear(GL_DEPTH_BUFFER_BIT);
+            // Set and clear the depth buffer
+            if (pass.enableDepthBuffer.size() > 0)
+            {
+                GLboolean enableDepthTest;
+                glGetBooleanv(GL_DEPTH_TEST, &enableDepthTest);
+                if (enableDepthTest)
+                    if (pass.enableDepthBuffer[0])
+                        glClear(GL_DEPTH_BUFFER_BIT);
+                    else
+                    {
+                        glDisable(GL_DEPTH_TEST);
+                        glClear(GL_DEPTH_BUFFER_BIT);
+                    }
                 else
-                {
-                    glDisable(GL_DEPTH_TEST);
-                    glClear(GL_DEPTH_BUFFER_BIT);
-                }
-            else
-                if (pass.enableDepthBuffer)
-                {
-                    glEnable(GL_DEPTH_TEST);
-                    glClear(GL_DEPTH_BUFFER_BIT);
-                }
+                    if (pass.enableDepthBuffer[0])
+                    {
+                        glEnable(GL_DEPTH_TEST);
+                        glClear(GL_DEPTH_BUFFER_BIT);
+                    }
+            }
 
             // Bind textures for the pass
             for (const Texture& info : pass.textures)
@@ -237,9 +230,8 @@ namespace cg
 
                 if (pass.viewport.size()==4 && pass.viewport[3])
                 {
-                    float aspect = (float)pass.viewport[2] / pass.viewport[3];
-                    V = glm::lookAt(pass.cameras[0].position, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-                    P = glm::perspective(glm::radians(pass.cameras[0].fieldOfView), aspect, pass.cameras[0].near, pass.cameras[0].far);
+                    V = pass.cameras[0].getLookAt();
+                    P = pass.cameras[0].getPerspective((float)pass.viewport[2] / pass.viewport[3]);
                 }
             }
 
@@ -249,19 +241,38 @@ namespace cg
             shader.disuse();
 
             for (const Scene::Pass::Object& object : pass.objects)
-                if (object.isVisible)
+                if (object.isVisible && !object.instances.empty())
                 {
-                    object.material.setUniforms(&shader);
+                    for (const Scene::Pass::Object::Instance& instance : object.instances)
+                        if (instance.isVisible)
+                        {
+                            instance.material.setUniforms(&shader);
 
-                    shader.use();
-                    shader.setUniform("M", object.modeltransform);
+                            shader.use();
+                            shader.setUniform("M", instance.modeltransform);
 
-                    glBindVertexArray(object.vao);
-                    glDrawElements(GL_TRIANGLES, (GLsizei)object.size, GL_UNSIGNED_INT, 0);
-                    glBindVertexArray(0);
+                            glBindVertexArray(object.vao);
+                            glDrawElements(GL_TRIANGLES, (GLsizei)object.size, GL_UNSIGNED_INT, 0);
+                            glBindVertexArray(0);
 
-                    shader.disuse();
+                            shader.disuse();
+                        }
                 }
+
+            //for (const Scene::Pass::Object& object : pass.objects)
+            //    if (object.instances[0].isVisible)
+            //    {
+            //        object.instances[0].material.setUniforms(&shader);
+
+            //        shader.use();
+            //        shader.setUniform("M", object.instances[0].modeltransform);
+
+            //        glBindVertexArray(object.vao);
+            //        glDrawElements(GL_TRIANGLES, (GLsizei)object.size, GL_UNSIGNED_INT, 0);
+            //        glBindVertexArray(0);
+
+            //        shader.disuse();
+            //    }
             glFinish();
         }
     }

@@ -246,6 +246,7 @@ xcopy /y /D "$(OutDir)$(TargetName)$(TargetExt)" "../bin/$(TargetName)"</Command
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)</AdditionalIncludeDirectories>
+      <TreatWarningAsError>false</TreatWarningAsError>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -307,8 +308,8 @@ powershell Compress-Archive -Path "..\CGFW" -Update -DestinationPath ..\CGFW_$([
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Framework.frag.glsl" />
-    <None Include="Framework.vert.glsl" />
+    <None Include="FiltersAssignment.frag.glsl" />
+    <None Include="FiltersAssignment.vert.glsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

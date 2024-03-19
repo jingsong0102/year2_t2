@@ -72,7 +72,7 @@ namespace cg
         std::vector<GLfloat>& normals,
         std::vector<GLfloat>& texCoords,
         std::vector<GLfloat>& tangents,
-        GLfloat size = 50.0f);
+        GLfloat size = 100.0f);
 
     void generateTeapot(std::vector<GLuint>& indices,
         std::vector<GLfloat>& points,

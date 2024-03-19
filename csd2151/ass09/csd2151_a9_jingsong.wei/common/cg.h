@@ -60,17 +60,58 @@ namespace cg
         {
             struct Object
             {
+                struct Instance
+                {
+                    Material material;
+                    const glm::mat4& modeltransform;
+                    bool isVisible;
+
+                    Instance(const Material& material = { },
+                        const glm::mat4& modeltransform = NOTRANSFORM,
+                        bool isVisible = VISIBLE)
+                        :
+                        material{ material },
+                        modeltransform{ modeltransform },
+                        isVisible{ isVisible }
+                    {}
+                };
+
                 GLuint vao;                     // The Vertex Array Object
                 std::vector<GLuint> buffers;    // Vertex buffers
                 size_t size;
-                Material material;
-                const glm::mat4& modeltransform;
+                std::vector<Instance> instances;
                 bool isVisible;
 
                 Object(const char* meshName,
                     const Material& material = { },
                     const glm::mat4& modeltransform = NOTRANSFORM,
-                    bool isVisible = VISIBLE);
+                    bool isVisible = VISIBLE)
+                    :
+                    instances{ },
+                    isVisible{ isVisible },
+                    vao{ 0 },
+                    buffers{ },
+                    size{ 0 }
+                {
+                    instances.push_back({ material, modeltransform, VISIBLE });
+                    setBuffers(meshName);
+                }
+
+                Object(const char* meshName,
+                    const std::initializer_list<Instance>& instances,
+                    bool isVisible = VISIBLE) 
+                    :
+                    instances{ instances },
+                    isVisible{ isVisible },
+                    vao{ 0 },
+                    buffers{ },
+                    size{ 0 }
+                {
+                    setBuffers(meshName);
+                }
+
+            private:
+                void setBuffers(const char* meshName);
             };
 
             typedef void (*SetUniformCallback)(Program& shader);
@@ -78,13 +119,14 @@ namespace cg
             FBO fbo;
             std::vector<int> viewport;
             std::vector<float> clearColor;
-            bool enableDepthBuffer;
+            std::vector<bool> enableDepthBuffer;
             std::vector<Object> objects;
             std::vector<Camera> cameras;
             std::vector<Light> lights;
             std::vector<Texture> textures;
             SetUniformCallback setUniformCallback;
 
+            // For old framework
             Pass(       
                 const FBO& fbo = { },
                 const std::initializer_list<int>& viewport = { },
@@ -105,6 +147,32 @@ namespace cg
                 cameras{ cameras }, 
                 lights{ lights },
                 textures{ textures }, 
+                setUniformCallback{ setUniformCallback }
+            {
+                //this->enableDepthBuffer.push_back(enableDepthBuffer);
+            }
+
+            // For new framework
+            Pass(
+                const FBO& fbo = { },
+                const std::initializer_list<int>& viewport = { },
+                const std::initializer_list<float>& clearColor = { },
+                const std::initializer_list<bool>& enableDepthBuffer = { },
+                const std::initializer_list<Object>& objects = { },
+                const std::initializer_list<Camera>& cameras = { },
+                const std::initializer_list<Light>& lights = { },
+                const std::initializer_list<Texture> textures = { },
+                SetUniformCallback setUniformCallback = nullptr
+            )
+                :
+                fbo{ fbo },
+                viewport{ viewport },
+                clearColor{ clearColor },
+                enableDepthBuffer{ enableDepthBuffer },
+                objects{ objects },
+                cameras{ cameras },
+                lights{ lights },
+                textures{ textures },
                 setUniformCallback{ setUniformCallback }
             {
             }
@@ -146,6 +214,13 @@ namespace cg
         {
             for (Scene::Pass& pass : passes)
                 pass.resize(width, height);
+        }
+
+        void camerasSetType(cg::CameraType cameraType)
+        {
+            for (Scene::Pass& pass : passes)
+                for (Camera& camera : pass.cameras)
+                    camera.setType(cameraType);
         }
 
         void camerasOnCursor(double xoffset, double yoffset, Program* pProgram = nullptr)
