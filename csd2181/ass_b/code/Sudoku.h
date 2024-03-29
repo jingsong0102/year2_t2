@@ -1,3 +1,13 @@
+/*!
+@file Sudoku.h
+@author Wei Jingsong (jingsong.wei@digipen.edu)
+@SIT id 2200646
+@course csd2183
+@section A
+@assignment Bonus Assignment
+@date 3/28/2024
+@brief This file contains the declaration of the Sudoku class and its related classes and structures.
+*/
 //---------------------------------------------------------------------------
 #ifndef SUDOKUH
 #define SUDOKUH
@@ -31,10 +41,10 @@ class Sudoku
        const char *board,    // one-dimensional array of symbols
        MessageType message,  // type of message
        size_t move,          // the move number
-       int basesize,         // 3, 4, 5, etc. (for 9x9, 16x16, 25x25, etc.)
-       int index,            // index (0-based) of current cell
-       char value,           // symbol (value) in current cell
-       int *dup_indexes      // index of each duplicate sorted from lowest
+       unsigned basesize,         // 3, 4, 5, etc. (for 9x9, 16x16, 25x25, etc.)
+       unsigned index,            // index (0-based) of current cell
+       char value            // symbol (value) in current cell
+                             // index of each duplicate sorted from lowest
                              // index to highest. -1 means no conflict.
                              // max of 3 duplicates,
                              // 1 in row,
@@ -61,7 +71,7 @@ class Sudoku
     ~Sudoku();
 
       // The client (driver) passed the board in the values parameter
-    void SetupBoard(const char *values, int size);
+    void SetupBoard(const char *values, size_t size);
 
       // Once the board is setup, this will start the search for the solution
     void Solve();
@@ -72,6 +82,25 @@ class Sudoku
 
   private:
   // Other private data members or methods...
+  int size_;
+  char *board_;
+  SymbolType stype_;
+  SUDOKU_CALLBACK callback_;
+  SudokuStats stats_;
+  /**
+  * @brief Recursive function to place a symbol on the Sudoku board.
+  * @param col Column index
+  * @param row Row index
+  * @return True if the puzzle is solved, false otherwise
+  */
+  bool place_value(int col, int row);
+  /**
+  * @brief Check if placing a symbol in a given position is a valid move.
+  * @param col Column index
+  * @param row Row index
+  * @param value Symbol to be placed
+  * @return True if the move is valid, false otherwise
+  */
+  bool is_valid_move(int col, int row, char value);
 };
-
 #endif  // SUDOKUH

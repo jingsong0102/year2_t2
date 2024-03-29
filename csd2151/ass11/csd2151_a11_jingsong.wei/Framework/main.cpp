@@ -16,7 +16,9 @@
 #include <GLFW/glfw3.h>
 
 cg::Scene* pScene = nullptr;
-
+glm::vec2 screen = { 0, 0 };
+bool lbutton_down = false;
+bool mode_shift = false;
 /*
    This function serves as the callback parameter for
 	  glfwSetKeyCallback function used in the main function
@@ -26,8 +28,15 @@ cg::Scene* pScene = nullptr;
 void keyCallback(GLFWwindow* pWindow, int key, int scancode, int action, int mods)
 {
 	if (action == GLFW_PRESS)
+	{
 		if (key == GLFW_KEY_ESCAPE)
 			glfwSetWindowShouldClose(pWindow, GL_TRUE);
+		else if (key == 'W')
+			pScene->camerasSetType(cg::CameraType::WALKING);
+		else if (key == 'O')
+			pScene->camerasSetType(cg::CameraType::ORBITING);
+	}
+	mode_shift = (mods == GLFW_MOD_SHIFT);
 }
 
 /*
@@ -36,7 +45,13 @@ void keyCallback(GLFWwindow* pWindow, int key, int scancode, int action, int mod
 */
 void mouseButtonCallback(GLFWwindow* pWindow, int button, int action, int mods)
 {
-
+	if (button == GLFW_MOUSE_BUTTON_LEFT)
+	{
+		if (GLFW_PRESS == action)
+			lbutton_down = true;
+		else if (GLFW_RELEASE == action)
+			lbutton_down = false;
+	}
 }
 
 /*
@@ -45,7 +60,24 @@ void mouseButtonCallback(GLFWwindow* pWindow, int button, int action, int mods)
 */
 void cursorPosCallback(GLFWwindow* pWindow, double xpos, double ypos)
 {
-
+	if (!lbutton_down)
+		return;
+	if (mode_shift)
+	{
+		static double oldxpos = xpos;
+		static double oldypos = ypos;
+		pScene->lightsOnCursor(xpos - oldxpos, ypos - oldypos, &pScene->shader);
+		oldxpos = xpos;
+		oldypos = ypos;
+	}
+	else
+	{
+		static double oldxpos = xpos;
+		static double oldypos = ypos;
+		pScene->camerasOnCursor(xpos - oldxpos, ypos - oldypos, &pScene->shader);
+		oldxpos = xpos;
+		oldypos = ypos;
+	}
 }
 
 /*
@@ -54,7 +86,10 @@ void cursorPosCallback(GLFWwindow* pWindow, double xpos, double ypos)
 */
 void scrollCallback(GLFWwindow* pWindow, double xoffset, double yoffset)
 {
-
+	if (mode_shift)
+		pScene->lightsOnScroll(xoffset, yoffset, &pScene->shader);
+	else
+		pScene->camerasOnScroll(xoffset, yoffset, &pScene->shader);
 }
 
 /*
@@ -63,7 +98,11 @@ void scrollCallback(GLFWwindow* pWindow, double xoffset, double yoffset)
 */
 void sizeCallback(GLFWwindow* pWindow, int width, int height)
 {
+	screen.x = static_cast<float>(width);
+	screen.y = static_cast<float>(height);
 
+	pScene->passes[0].resize(static_cast<int>(screen.x), static_cast<int>(screen.y));
+	pScene->passes[1].resize(static_cast<int>(screen.x), static_cast<int>(screen.y));
 }
 
 /*
@@ -83,7 +122,7 @@ int main(int argc, char** argv)
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
 	glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
 
-	GLFWwindow* pWindow = glfwCreateWindow(WIDTH, HEIGHT, "Framework", NULL, NULL);
+	GLFWwindow* pWindow = glfwCreateWindow(WIDTH, HEIGHT, "OgresAssignment", NULL, NULL);
 	if (!pWindow)
 	{
 		std::cerr << "Unable to create OpenGL context." << std::endl;
@@ -111,7 +150,16 @@ int main(int argc, char** argv)
 #endif
 
 	std::cout << std::endl;
-	std::cout << "A computer graphics framework." << std::endl;
+	std::cout << "The Ogres Assignment demo." << std::endl;
+	std::cout << "Description:" << std::endl;
+	std::cout << "   This app demonstrates a two-pass mesh rendering process for 231 objects" << std::endl;
+	std::cout << "   using instancing, deferred shading technique and normal mapping." << std::endl;
+	std::cout << "Interactions:" << std::endl;
+	std::cout << "   - The camera movement is controlled by the mouse left button and wheel." << std::endl;
+	std::cout << "   - Press W or O to switch between the camera movement types (orbiting or walking)." << std::endl;
+	std::cout << "   - The light is controlled the same way when shift is pressed." << std::endl;
+	std::cout << "   - The screen is resizable." << std::endl;
+	std::cout << "   - Press the Esc key to close the app." << std::endl;
 	std::cout << std::endl;
 
 #if defined( _DEBUG )

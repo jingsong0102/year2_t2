@@ -4,7 +4,7 @@
 @SIT id 2200646
 @course csd2183
 @section A
-@assignent 4
+@assignment 4
 @date 3/20/2024
 @brief This file contains the definition of the ALGraph class and its related classes and structures.
 */

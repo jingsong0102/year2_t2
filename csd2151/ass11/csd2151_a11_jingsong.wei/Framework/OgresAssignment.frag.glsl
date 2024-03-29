@@ -19,40 +19,32 @@ struct Material
 
 uniform int Pass;   // Pass number
 
-
-
-// For pass 0
-
-
 in vec3 LightDir;
 in vec3 ViewDir;
-in vec2 TexCoord0;
-
-layout(location=1) out vec3 LightDirData;
-layout(location=2) out vec3 ViewDirData;
-layout(location=3) out vec3 TexCoordData;
-
-void pass0() 
-{
-    // Store light and view directions in textures
-    LightDirData = LightDir;
-    ViewDirData = ViewDir;
-    TexCoordData = vec3(TexCoord0, 0.0f);
-}
-
-
-// For pass 1
-
-in vec2 TexCoord1;
-
-layout(binding=0) uniform sampler2D LightDirTex;
-layout(binding=1) uniform sampler2D ViewDirTex;
-layout(binding=2) uniform sampler2D TexCoordTex;
-layout(binding=3) uniform sampler2D DiffusePng;
-layout(binding=4) uniform sampler2D NormalMapPng;
+in vec2 TexCoord;
 
 uniform Light light[1];
 uniform Material material;
+
+layout(location=1) out vec3 LightDirData;
+layout(location=2) out vec3 ViewDirData;
+layout(location=3) out vec2 TexCoordData;
+
+void pass0() 
+{
+    // Store light view and texturecoordi
+    LightDirData = LightDir;
+    ViewDirData = ViewDir;
+    TexCoordData = TexCoord;
+}
+
+in vec2 TexCoord1;
+
+layout(binding=0) uniform sampler2D LightTex;
+layout(binding=1) uniform sampler2D ViewTex;
+layout(binding=2) uniform sampler2D TexTex;
+layout(binding=3) uniform sampler2D ColorTex;
+layout(binding=4) uniform sampler2D NormalMapTex;
 
 layout(location=0) out vec4 FragColor;
 
@@ -60,50 +52,47 @@ layout(location=0) out vec4 FragColor;
 // All vector parameters must be normalized.
 vec3 blinnPhong(vec3 normal, vec3 color, vec3 lightDir, vec3 viewDir)
 {
-  vec3 ambient = light[0].La * material.Ka * color;
+    //calculate diffuse
+    float diff = max(dot(normal, lightDir), 0.0f);
+    vec3 diffuse = color * diff * light[0].Ld * material.Kd;
 
-  float lDotN = max(dot(lightDir, normal), 0.0f);
-  vec3 diffuse = color * light[0].Ld * material.Kd * lDotN;
+    //calculate specular
+    vec3 specular = vec3(0.0f);
+    if (diff > 0.0f) {
+        vec3 halfwayDir = normalize(lightDir + viewDir);
+        float spec = pow(max(dot(normal, halfwayDir), 0.0f), material.shininess); 
+        specular = material.Ks * light[0].Ls * spec; 
+    }
+    // calculate ambient
+    vec3 ambient = light[0].La * material.Ka * color; // Assuming a low ambient factor
 
-  vec3 spec = vec3(0.0f);
-  if (lDotN > 0.0f)
-  {
-    vec3 halfway = normalize(viewDir + lightDir);
-    spec = light[0].Ls * material.Ks * pow(max(dot(halfway, normal), 0.0f), material.shininess);
-  }
-  return ambient + diffuse + spec;
+   return ambient + diffuse + specular;
 }
 
 void pass1() 
 {
-    // For debugging
-    //FragColor = texture(LightDirTex, TexCoord1);
-    //FragColor = texture(ViewDirTex, TexCoord1);    
-    //FragColor = texture(TexCoordTex, TexCoord1);
-    //FragColor = texture(DiffusePng, TexCoord1);
-    //FragColor = texture(NormalMapPng, TexCoord1);
 
-    // Lookup the normal from the normal map
-    vec2 texcoord = vec2(texture(TexCoordTex, TexCoord1));
+    // Retrieve information from textures
+    vec3 LightDir = vec3(texture(LightTex, TexCoord1));
+    vec3 ViewDir = vec3(texture(ViewTex, TexCoord1));
+    vec2 Texcoord = vec2(texture(TexTex, TexCoord1));
 
-    if (all(equal(texcoord, vec2(0.0f, 0.0f))))
-        FragColor = vec4(0.5f);
-    else
-    {
-        vec3 norm = vec3(texture(NormalMapPng, texcoord));
-        norm.xy = 2.0f * norm.xy - 1.0f;
+    //if (all(equal(texcoord, vec2(0.0f, 0.0f))))
+       // FragColor = vec4(0.5f);
+    //else
+    //{
+        // Lookup the normal from the normal map texture
+        vec3 normal = vec3(texture(NormalMapTex, Texcoord));
+        normal.xy = 2.0f * normal.xy - 1.0f;
 
-         // Retrieve information from textures
-        vec3 texColor = vec3(texture(DiffusePng, texcoord));
-        vec3 lightDir = vec3(texture(LightDirTex, TexCoord1));
-        vec3 viewDir = vec3(texture(ViewDirTex, TexCoord1));
-
-        vec3 color = blinnPhong(norm, 
-                                texColor, 
-                                normalize(lightDir), 
-                                normalize(viewDir));
+        // Calculate the illumination
+        vec3 color = blinnPhong(normal, 
+                            vec3(texture(ColorTex, Texcoord)), 
+                            normalize(LightDir), 
+                            normalize(ViewDir));
+        // Set with the gamma correction
         FragColor = vec4(pow(color, vec3(1.0f/2.2f)), 1.0f);
-    }
+    //}
 }
 
 void main() 
