@@ -1,0 +1,25 @@
+
+==================== Test5 ====================
+
+Creating table:
+Hash function: Universal Hash
+Initial size: 11
+Max load factor: 3
+Growth factor: 2
+Slot:   0 --> 130001 --> 125001 --> 104001 
+Slot:   1 --> 128001 --> 112001 --> 107001 
+Slot:   2 --> 120001 --> 115001 
+Slot:   3 --> 123001 --> 118001 --> 102001 
+Slot:   4 --> 131001 --> 126001 --> 110001 --> 105001 
+Slot:   5 --> 129001 --> 113001 --> 108001 
+Slot:   6 --> 121001 --> 116001 
+Slot:   7 --> 124001 --> 119001 --> 103001 
+Slot:   8 --> 127001 --> 111001 --> 106001 
+Slot:   9 --> 114001 --> 109001 
+Slot:  10 --> 122001 --> 117001 --> 101001 
+Number of probes: 61
+Number of expansions: 0
+Items: 31, TableSize: 11
+Load factor: 2.82
+
+Caught HashTableException in Test5: E_DUPLICATE

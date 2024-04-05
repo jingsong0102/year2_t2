@@ -1,3 +1,12 @@
+/*!*****************************************************************************
+\file OgresAssignment.vert.glsl
+\author Vadim Surov (vsurov\@digipen.edu)
+\co-author WEI JINGSONG (jingsong.wei@digipen.edu)
+\par Course: CSD2151
+\par Assignment: 11
+\date 03/31/2024 (MM/DD/YYYY)
+\brief This file has definitions of the fragment shader for OgresAssignment.
+*******************************************************************************/
 R"(
 #version 420
 
@@ -71,28 +80,26 @@ vec3 blinnPhong(vec3 normal, vec3 color, vec3 lightDir, vec3 viewDir)
 
 void pass1() 
 {
-
     // Retrieve information from textures
     vec3 LightDir = vec3(texture(LightTex, TexCoord1));
     vec3 ViewDir = vec3(texture(ViewTex, TexCoord1));
     vec2 Texcoord = vec2(texture(TexTex, TexCoord1));
 
-    //if (all(equal(texcoord, vec2(0.0f, 0.0f))))
-       // FragColor = vec4(0.5f);
-    //else
-    //{
-        // Lookup the normal from the normal map texture
-        vec3 normal = vec3(texture(NormalMapTex, Texcoord));
-        normal.xy = 2.0f * normal.xy - 1.0f;
+    if (Texcoord == vec2(0.0f, 0.0f)) {
+        FragColor = vec4(0.0f); // Set to fully transparent or to a default color
+        return; // Skip further processing
+    }
+    // Lookup the normal from the normal map texture
+    vec3 normal = vec3(texture(NormalMapTex, Texcoord));
+    normal.xy = 2.0f * normal.xy - 1.0f;
 
-        // Calculate the illumination
-        vec3 color = blinnPhong(normal, 
+    // Calculate the illumination
+    vec3 color = blinnPhong(normal, 
                             vec3(texture(ColorTex, Texcoord)), 
                             normalize(LightDir), 
                             normalize(ViewDir));
-        // Set with the gamma correction
-        FragColor = vec4(pow(color, vec3(1.0f/2.2f)), 1.0f);
-    //}
+    // Set with the gamma correction
+    FragColor = vec4(pow(color, vec3(1.0f/2.2f)), 1.0f);
 }
 
 void main() 

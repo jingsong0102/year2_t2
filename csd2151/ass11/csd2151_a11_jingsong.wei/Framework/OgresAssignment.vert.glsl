@@ -1,3 +1,12 @@
+/*!*****************************************************************************
+\file OgresAssignment.vert.glsl
+\author Vadim Surov (vsurov\@digipen.edu)
+\co-author WEI JINGSONG (jingsong.wei@digipen.edu)
+\par Course: CSD2151
+\par Assignment: 11
+\date 03/31/2024 (MM/DD/YYYY)
+\brief This file has definitions of the vertex shader for OgresAssignment.
+*******************************************************************************/
 R"(
 #version 330 core
 

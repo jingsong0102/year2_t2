@@ -1,0 +1,21 @@
+
+==================== StressTest ====================
+
+Creating table:
+Hash function: Universal Hash
+Initial size: 5
+Max load factor: 2.5
+Growth factor: 1.5
+
+Inserting 1000000 items...
+Number of probes: 8314415
+Number of expansions: 27
+Items: 1000000, TableSize: 572087
+Load factor: 1.75
+
+Deleting 1000000 items...
+Number of probes: 9779532
+Number of expansions: 27
+Items: 0, TableSize: 572087
+Load factor: 0
+

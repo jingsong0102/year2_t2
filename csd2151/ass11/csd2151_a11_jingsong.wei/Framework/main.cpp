@@ -1,10 +1,10 @@
 /*!*****************************************************************************
 \file main.cpp
 \author Vadim Surov (vsurov\@digipen.edu)
-\co-author YOUR NAME (DIGIPEN ID)
-\par Course: CSD2151/CSD2150/CS250
-\par Assignment:
-\date 02/09/2024 (MM/DD/YYYY)
+\co-author WEI JINGSONG (jingsong.wei@digipen.edu)
+\par Course: CSD2151
+\par Assignment: 11
+\date 03/31/2024 (MM/DD/YYYY)
 \brief This file has definitions of the main function
 	   along with global variables and sub-functions used in main.
 *******************************************************************************/

@@ -1,0 +1,28 @@
+
+==================== Test4 ====================
+
+Creating table:
+Hash function: Universal Hash
+Initial size: 7
+Max load factor: 3
+Growth factor: 2
+Slot:   0 --> 120001 --> 113001 --> 106001 
+Slot:   1 --> 119001 --> 112001 --> 105001 
+Slot:   2 --> 118001 --> 111001 --> 104001 
+Slot:   3 --> 117001 --> 110001 --> 103001 
+Slot:   4 --> 116001 --> 109001 --> 102001 
+Slot:   5 --> 115001 --> 108001 --> 101001 
+Slot:   6 --> 114001 --> 107001 
+Number of probes: 39
+Number of expansions: 0
+Items: 20, TableSize: 7
+Load factor: 2.86
+
+Key:   106001, Name:       Smalls,        Derek 
+Salary:  80000, Years: 10
+Number of probes: 42
+Number of expansions: 0
+Items: 20, TableSize: 7
+Load factor: 2.86
+
+Caught HashTableException in Test4: E_ITEM_NOT_FOUND
