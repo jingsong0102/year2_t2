@@ -239,7 +239,7 @@ int main(int argc, char** argv)
                         {
                             TORUS,
                             MATERIAL_OBJECT,
-                            NOTRANSFORM,
+                            glm::translate(glm::mat4(1.0f), {1.0f, 1.f, 1.0f}),
                             VISIBLE
                         },
                         {

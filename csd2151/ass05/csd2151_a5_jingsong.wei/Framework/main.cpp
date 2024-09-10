@@ -261,7 +261,7 @@ int main(int argc, char **argv)
                              MATERIAL_REFLECT_REFRACT},
                             {CUBE,
                              MATERIAL_REFLECT_REFRACT,
-                             glm::translate(glm::mat4(1.0f), {3.5f, 0.0f, 0.f})},
+                             glm::translate(glm::mat4(50.0f), {3.5f, 0.0f, 0.f})},
                             {TORUS,
                              MATERIAL_REFLECT_REFRACT,
                              glm::translate(glm::mat4(1.0f), {-3.5f, 0.0f, 0.f})}},

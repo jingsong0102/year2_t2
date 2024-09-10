@@ -287,7 +287,10 @@ int main(int argc, char** argv)
 				// Objects
 				{
 					{
-						QUAD
+						QUAD,
+						{
+							{ { "deferred_diffuse", 3 }, { "deferred_normal", 4 } }
+						}
 					}
 				},
 

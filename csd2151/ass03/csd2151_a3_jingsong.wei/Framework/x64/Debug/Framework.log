@@ -1,4 +1,10 @@
-﻿  main.cpp
+﻿  cg.cpp
+  debug.cpp
+  program.cpp
+  trianglemeshes.cpp
+  main.cpp
+  Generating Code...
+LINK : warning LNK4098: defaultlib 'MSVCRT' conflicts with use of other libs; use /NODEFAULTLIB:library
   Framework.vcxproj -> C:\Year2\t2\csd2151\ass03\csd2151_a3_jingsong.wei\x64\Debug\Framework.exe
   C:\Year2\t2\csd2151\ass03\csd2151_a3_jingsong.wei\x64\Debug\Framework.exe
   1 File(s) copied

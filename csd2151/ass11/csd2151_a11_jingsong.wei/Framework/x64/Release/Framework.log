@@ -1,0 +1,2 @@
+﻿  main.cpp
+C:\Year2\t2\csd2151\ass11\csd2151_a11_jingsong.wei\Framework\main.cpp(207,3): error C2440: 'initializing': cannot convert from 'initializer list' to 'cg::Scene'

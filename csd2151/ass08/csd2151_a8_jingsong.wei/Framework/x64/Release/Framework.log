@@ -1,0 +1,12 @@
+﻿  cg.cpp
+  debug.cpp
+  program.cpp
+  trianglemeshes.cpp
+  main.cpp
+  Generating code
+  Previous IPDB not found, fall back to full compilation.
+  All 1839 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finished generating code
+  Framework.vcxproj -> C:\Year2\t2\csd2151\ass08\csd2151_a8_jingsong.wei\x64\Release\Framework.exe
+  C:\Year2\t2\csd2151\ass08\csd2151_a8_jingsong.wei\x64\Release\Framework.exe
+  1 File(s) copied
